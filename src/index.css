@@ -16,6 +16,31 @@
 		url('/fonts/DepartureMono-Regular.woff') format('woff');
 }
 
+/* Prysm brand fonts (stacks/verity/prysm-landing/fonts) */
+@font-face {
+	font-family: 'Inter';
+	font-style: normal;
+	font-weight: 100 900;
+	font-display: swap;
+	src: url('/fonts/inter-latin.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'DM Mono';
+	font-style: normal;
+	font-weight: 400;
+	font-display: swap;
+	src: url('/fonts/dm-mono-400-latin.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'DM Mono';
+	font-style: normal;
+	font-weight: 500;
+	font-display: swap;
+	src: url('/fonts/dm-mono-500-latin.woff2') format('woff2');
+}
+
 @theme inline {
 	--radius-sm: calc(var(--radius) - 4px);
 	--radius-md: calc(var(--radius) - 2px);
@@ -48,53 +73,105 @@
 	--font-sans:
 		'Inter', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji',
 		'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+	--font-mono:
+		'DM Mono', ui-monospace, 'SF Mono', 'Cascadia Code', Menlo, monospace;
 	--font-funky-mono: 'Departure Mono', var(--font-mono);
 
-	--color-brand: #ff3d00;
+	--color-brand: #e0705a;
 	--color-text: #000;
+}
+
+/**
+ * The Prysm brand system.
+ *
+ * The brand lives in `stacks/verity/prysm-landing/brand` — a warm canvas, ink
+ * text, hairlines, a terracotta mark and a 4px radius. This block re-themes the
+ * design system's tokens so every surface in the app follows the brand, without
+ * touching a single component.
+ *
+ * Values are `light-dark()` pairs (light first) because the app drives the
+ * scheme through `color-scheme` on the root element.
+ */
+@theme {
+	/* Surfaces: the brand's `--canvas` family */
+	--color-kumo-canvas: light-dark(#f7f5f0, #2b2622);
+	--color-kumo-base: light-dark(#fffdfa, #322d29);
+	--color-kumo-elevated: light-dark(#ffffff, #383330);
+	--color-kumo-recessed: light-dark(#f2efe9, #211d1a);
+	--color-kumo-tint: light-dark(#efece5, #2a2521);
+	--color-kumo-contrast: light-dark(#221f1c, #17130f);
+	--color-kumo-overlay: light-dark(#fffdfa, #383330);
+	--color-kumo-control: light-dark(#fffdfa, #383330);
+	--color-kumo-interact: light-dark(#e4dfd6, #4d4741);
+	--color-kumo-fill: light-dark(#efece5, #423c38);
+	--color-kumo-fill-hover: light-dark(#e4dfd6, #4d4741);
+	--color-kumo-brand: light-dark(#a8482f, #e0705a);
+	--color-kumo-brand-hover: light-dark(#8a3b26, #f0a189);
+	--color-kumo-line: light-dark(#ded9d0, #4d4741);
+	--color-kumo-hairline: light-dark(#e9e5dd, #3f3a36);
+	--color-kumo-focus: light-dark(#a8482f, #e0705a);
+
+	/* Ink */
+	--text-color-kumo-default: light-dark(#221f1c, #f7f5f0);
+	--text-color-kumo-strong: light-dark(#000000, #ffffff);
+	--text-color-kumo-subtle: light-dark(#8b8378, #aea69c);
+	--text-color-kumo-inactive: light-dark(#a9a196, #8b8378);
+	--text-color-kumo-placeholder: light-dark(#a9a196, #8b8378);
+	--text-color-kumo-brand: light-dark(#a8482f, #e0705a);
+	--text-color-kumo-link: light-dark(#8a3b26, #e0a189);
+	--text-color-kumo-success: light-dark(#5c7f4a, #9fc98a);
+	--text-color-kumo-warning: light-dark(#8a6a26, #d9b36a);
+	--text-color-kumo-danger: light-dark(#a83f2c, #e07a6a);
+
+	/* The brand's radius is 4px */
+	--radius-sm: 2px;
+	--radius-md: 4px;
+	--radius-lg: 6px;
+	--radius-xl: 10px;
 }
 
 @layer base {
 	:root {
-		--radius: 0.625rem;
+		--radius: 4px;
 		--destructive: oklch(0.577 0.245 27.325);
-		--border: oklch(0.922 0 0);
-		--input: oklch(0.922 0 0);
-		--ring: oklch(0.708 0 0);
-		--build-chat-colors-bg-1: #e7e7e7;
-		--build-chat-colors-bg-2: #f6f6f6;
-		--build-chat-colors-bg-3: #fbfbfc;
+		--border: #ded9d0;
+		--input: #f2efe9;
+		--ring: #a8482f;
+		--build-chat-colors-bg-1: #f2efe9;
+		--build-chat-colors-bg-2: #f7f5f0;
+		--build-chat-colors-bg-3: #fffdfa;
 		--build-chat-colors-bg-4: #ffffff;
-		--build-chat-colors-border-primary: #e5e5e5;
-		--build-chat-colors-border-secondary: #eeeeee;
-		--build-chat-colors-border-tertiary: #eeeeee;
-		--build-chat-colors-danger: #950000cc;
-		--build-chat-colors-brand-primary: #f6821f;
-		--build-chat-colors-brand-light: #faae42;
+		--build-chat-colors-border-primary: #ded9d0;
+		--build-chat-colors-border-secondary: #e9e5dd;
+		--build-chat-colors-border-tertiary: #e9e5dd;
+		--build-chat-colors-danger: #a83f2c;
+		--build-chat-colors-brand-primary: #a8482f;
+		--build-chat-colors-brand-light: #8a3b26;
 		--build-chat-colors-text-inverted: #ffffff;
-		--build-chat-colors-text-primary: #0a0a0a;
-		--build-chat-colors-text-secondary: #171717;
-		--build-chat-colors-text-tertiary: #21212199;
+		--build-chat-colors-text-primary: #221f1c;
+		--build-chat-colors-text-secondary: #4a443c;
+		--build-chat-colors-text-tertiary: #8b837899;
 	}
 
 	[data-mode='dark'] {
-		--destructive: #ef4444; /* Error red */
-		--border: #393939; /* Primary border color */
-		--input: #292929; /* Input background */
+		--destructive: #e07a6a; /* Error red */
+		--border: #4d4741; /* Primary border color */
+		--input: #211d1a; /* Input background */
+		--ring: #e0705a;
 
-		--build-chat-colors-bg-1: #151515;
-		--build-chat-colors-bg-2: #1f2020;
-		--build-chat-colors-bg-3: #292929;
-		--build-chat-colors-bg-4: #3c3c3c;
-		--build-chat-colors-border-primary: #393939;
-		--build-chat-colors-border-secondary: #454746;
-		--build-chat-colors-border-tertiary: #454746;
-		--build-chat-colors-brand-primary: #f6821f;
-		--build-chat-colors-brand-light: #faae42;
-		--build-chat-colors-text-inverted: #000000;
-		--build-chat-colors-text-primary: #ffffff;
-		--build-chat-colors-text-secondary: #cdcaca;
-		--build-chat-colors-text-tertiary: #bcb9b9;
+		--build-chat-colors-bg-1: #211d1a;
+		--build-chat-colors-bg-2: #2b2622;
+		--build-chat-colors-bg-3: #322d29;
+		--build-chat-colors-bg-4: #383330;
+		--build-chat-colors-border-primary: #4d4741;
+		--build-chat-colors-border-secondary: #3f3a36;
+		--build-chat-colors-border-tertiary: #3f3a36;
+		--build-chat-colors-brand-primary: #e0705a;
+		--build-chat-colors-brand-light: #f0a189;
+		--build-chat-colors-text-inverted: #17130f;
+		--build-chat-colors-text-primary: #f7f5f0;
+		--build-chat-colors-text-secondary: #c9c0ad;
+		--build-chat-colors-text-tertiary: #aea69c99;
 	}
 
 	* {
@@ -239,11 +316,11 @@
 		/* Warm brand core behind headline + prompt */
 		radial-gradient(
 			ellipse 42% 34% at 50% 28%,
-			rgba(246, 130, 31, 0.18) 0%,
-			rgba(246, 130, 31, 0.08) 32%,
+			color-mix(in srgb, var(--color-kumo-brand) 18%, transparent) 0%,
+			color-mix(in srgb, var(--color-kumo-brand) 7%, transparent) 32%,
 			transparent 68%
 		),
-		/* Soft cool rim so the stage reads as lit, not flat orange */
+		/* Soft rim so the stage reads as lit, not flat */
 		radial-gradient(
 				ellipse 58% 46% at 50% 30%,
 				rgba(255, 255, 255, 0.06) 0%,
@@ -261,8 +338,8 @@
 	background:
 		radial-gradient(
 			ellipse 42% 34% at 50% 28%,
-			rgba(246, 130, 31, 0.14) 0%,
-			rgba(246, 130, 31, 0.05) 32%,
+			color-mix(in srgb, var(--color-kumo-brand) 14%, transparent) 0%,
+			color-mix(in srgb, var(--color-kumo-brand) 5%, transparent) 32%,
 			transparent 68%
 		),
 		radial-gradient(
@@ -467,6 +544,17 @@
 	--tw-prose-bold: --value(var(--color-text));
 	--tw-prose-quotes: --value(var(--color-text));
 	--tw-prose-counters: --value(var(--color-text));
+	/* The brand: terracotta for links and marks, warm ink for the rest. */
+	--tw-prose-links: --value(var(--color-kumo-brand));
+	--tw-prose-bullets: --value(var(--color-kumo-brand));
+	--tw-prose-hr: --value(var(--color-kumo-hairline));
+	--tw-prose-quote-borders: --value(var(--color-kumo-hairline));
+	--tw-prose-captions: --value(var(--color-kumo-subtle));
+	--tw-prose-pre-bg: --value(var(--color-kumo-recessed));
+	--tw-prose-pre-border: --value(var(--color-kumo-hairline));
+	--tw-prose-inline-code-bg: --value(var(--color-kumo-recessed));
+	--tw-prose-th-borders: --value(var(--color-kumo-hairline));
+	--tw-prose-td-borders: --value(var(--color-kumo-hairline));
 }
 
 /* Chat messages custom scrollbar */

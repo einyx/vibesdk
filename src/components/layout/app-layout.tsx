@@ -2,6 +2,7 @@ import React from 'react';
 import { Outlet } from 'react-router';
 import { SidebarProvider, useSidebar } from '@cloudflare/kumo';
 import { AppSidebar } from './app-sidebar';
+import { AppRail } from './app-rail';
 import { GlobalHeader } from './global-header';
 import { HeaderProvider } from './header-context';
 
@@ -46,6 +47,32 @@ function getSidebarDefaultOpen(): boolean {
 	return match[1] === 'true';
 }
 
+/**
+ * The shell.
+ *
+ * On desktop the app runs on the rail: a column of marks, so the canvas keeps
+ * its width. On mobile the wide sidebar is still the drawer — it holds the app
+ * lists that do not fit an icon rail.
+ */
+function Shell({ children }: AppLayoutProps) {
+	const { isMobile } = useSidebar();
+
+	return (
+		<HeaderProvider>
+			<SidebarKeyboardShortcut />
+			<div className="flex h-svh w-full overflow-hidden bg-kumo-canvas">
+				{isMobile ? <AppSidebar /> : <AppRail />}
+				<main className="relative flex h-full min-w-0 flex-1 flex-col overflow-hidden bg-kumo-canvas">
+					<GlobalHeader />
+					<div className="min-h-0 flex-1 overflow-auto bg-kumo-canvas">
+						{children || <Outlet />}
+					</div>
+				</main>
+			</div>
+		</HeaderProvider>
+	);
+}
+
 export function AppLayout({ children }: AppLayoutProps) {
 	const defaultOpen = React.useMemo(() => getSidebarDefaultOpen(), []);
 
@@ -59,16 +86,7 @@ export function AppLayout({ children }: AppLayoutProps) {
 			onOpenChange={persistSidebarState}
 			className="vibesdk-sidebar-wrapper"
 		>
-			<HeaderProvider>
-				<SidebarKeyboardShortcut />
-				<AppSidebar />
-				<main className="bg-kumo-canvas flex flex-col h-screen relative flex-1 min-w-0 overflow-hidden">
-					<GlobalHeader />
-					<div className="flex-1 min-h-0 overflow-auto bg-kumo-canvas">
-						{children || <Outlet />}
-					</div>
-				</main>
-			</HeaderProvider>
+			<Shell>{children}</Shell>
 		</SidebarProvider>
 	);
 }

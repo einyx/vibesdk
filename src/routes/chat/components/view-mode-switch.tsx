@@ -48,7 +48,7 @@ export function ViewModeSwitch({
 	}
 
 	return (
-		<div className="flex items-center gap-1 bg-bg-1 rounded-md p-0.5 relative">
+		<div className="relative flex items-center gap-4">
 			<AnimatePresence>
 				{showTooltip && (
 					<motion.div
@@ -67,10 +67,10 @@ export function ViewModeSwitch({
 				<button
 					onClick={() => onChange('preview')}
 					className={cn(
-						'p-1 flex items-center justify-between h-full rounded-md transition-colors',
+						'flex items-center justify-between px-0.5 pb-1 pt-1 transition-colors',
 						view === 'preview' || view === 'presentation'
-							? 'bg-bg-4 text-text-primary'
-							: 'text-text-50/70 hover:text-text-primary hover:bg-brand',
+							? 'text-kumo-default border-b-2 border-kumo-brand -mb-px'
+							: 'text-kumo-subtle hover:text-kumo-default border-b-2 border-transparent -mb-px',
 					)}
 					title={featureDefinition?.name ?? 'Preview'}
 				>
@@ -81,10 +81,10 @@ export function ViewModeSwitch({
 			<button
 				onClick={() => onChange('editor')}
 				className={cn(
-					'p-1 flex items-center justify-between h-full rounded-md transition-colors',
+					'flex items-center justify-between px-0.5 pb-1 pt-1 transition-colors',
 					view === 'editor'
-						? 'bg-bg-4 text-text-primary'
-						: 'text-text-50/70 hover:text-text-primary hover:bg-brand',
+						? 'text-kumo-default border-b-2 border-kumo-brand -mb-px'
+						: 'text-kumo-subtle hover:text-kumo-default border-b-2 border-transparent -mb-px',
 				)}
 				title="Code"
 			>
@@ -96,10 +96,10 @@ export function ViewModeSwitch({
 				<button
 					onClick={() => onChange('docs')}
 					className={cn(
-						'p-1 flex items-center justify-between h-full rounded-md transition-colors',
+						'flex items-center justify-between px-0.5 pb-1 pt-1 transition-colors',
 						view === 'docs'
-							? 'bg-bg-4 text-text-primary'
-							: 'text-text-50/70 hover:text-text-primary hover:bg-brand',
+							? 'text-kumo-default border-b-2 border-kumo-brand -mb-px'
+							: 'text-kumo-subtle hover:text-kumo-default border-b-2 border-transparent -mb-px',
 					)}
 					title="Docs"
 				>
@@ -112,10 +112,10 @@ export function ViewModeSwitch({
 				<button
 					onClick={() => onChange('database')}
 					className={cn(
-						'p-1 flex items-center justify-between h-full rounded-md transition-colors',
+						'flex items-center justify-between px-0.5 pb-1 pt-1 transition-colors',
 						view === 'database'
-							? 'bg-bg-4 text-text-primary'
-							: 'text-text-50/70 hover:text-text-primary hover:bg-brand',
+							? 'text-kumo-default border-b-2 border-kumo-brand -mb-px'
+							: 'text-kumo-subtle hover:text-kumo-default border-b-2 border-transparent -mb-px',
 					)}
 					title="Database (read-only)"
 				>
@@ -128,10 +128,10 @@ export function ViewModeSwitch({
 				<button
 					onClick={() => onChange('repo')}
 					className={cn(
-						'p-1 flex items-center justify-between h-full rounded-md transition-colors',
+						'flex items-center justify-between px-0.5 pb-1 pt-1 transition-colors',
 						view === 'repo'
-							? 'bg-bg-4 text-text-primary'
-							: 'text-text-50/70 hover:text-text-primary hover:bg-brand',
+							? 'text-kumo-default border-b-2 border-kumo-brand -mb-px'
+							: 'text-kumo-subtle hover:text-kumo-default border-b-2 border-transparent -mb-px',
 					)}
 					title="Repository (read-only)"
 				>
@@ -142,10 +142,10 @@ export function ViewModeSwitch({
 				<button
 					onClick={() => onChange('terminal')}
 					className={cn(
-						'p-1 flex items-center justify-between h-full rounded-md transition-colors',
+						'flex items-center justify-between px-0.5 pb-1 pt-1 transition-colors',
 						view === 'terminal'
-							? 'bg-bg-4 text-text-primary'
-							: 'text-text-50/70 hover:text-text-primary hover:bg-brand',
+							? 'text-kumo-default border-b-2 border-kumo-brand -mb-px'
+							: 'text-kumo-subtle hover:text-kumo-default border-b-2 border-transparent -mb-px',
 					)}
 					title="Terminal"
 				>

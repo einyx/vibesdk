@@ -27,6 +27,8 @@ declare namespace Cloudflare {
 		LOGTO_CLIENT_SECRET: string;
 		LOGTO_ISSUER: string;
 		OPENROUTER_API_KEY: string;
+		ZHIPU_API_KEY: string;
+		GLM_API_KEY: string;
 		PLATFORM_MODEL_PROVIDERS: string;
 		SANDBOX_SERVICE_API_KEY: string;
 		SANDBOX_SERVICE_TYPE: string;

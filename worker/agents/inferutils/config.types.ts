@@ -337,6 +337,63 @@ const MODELS_MASTER = {
             creditCost: 8, // $0.22
             contextSize: 262144, // 256K Context
         },
+    },
+    // --- Workers AI (direct, OpenAI-compatible endpoint) ---
+    GPT_OSS_120B: {
+        id: '@cf/openai/gpt-oss-120b',
+        config: {
+            name: 'GPT-OSS 120B',
+            size: ModelSize.REGULAR,
+            provider: 'workers-ai',
+            creditCost: 1,
+            contextSize: 131072, // 128K Context
+            directOverride: true,
+        },
+    },
+    QWEN_2_5_CODER_32B: {
+        id: '@cf/qwen/qwen2.5-coder-32b-instruct',
+        config: {
+            name: 'Qwen 2.5 Coder 32B',
+            size: ModelSize.LITE,
+            provider: 'workers-ai',
+            creditCost: 1,
+            contextSize: 32768, // 32K Context
+            directOverride: true,
+        },
+    },
+    DEEPSEEK_R1_DISTILL_QWEN_32B: {
+        id: '@cf/deepseek-ai/deepseek-r1-distill-qwen-32b',
+        config: {
+            name: 'DeepSeek R1 Distill Qwen 32B',
+            size: ModelSize.REGULAR,
+            provider: 'workers-ai',
+            creditCost: 1,
+            contextSize: 81920, // 80K Context
+            directOverride: true,
+        },
+    },
+    LLAMA_3_3_70B: {
+        id: '@cf/meta/llama-3.3-70b-instruct-fp8-fast',
+        config: {
+            name: 'Llama 3.3 70B',
+            size: ModelSize.REGULAR,
+            provider: 'workers-ai',
+            creditCost: 1,
+            contextSize: 131072, // 128K Context
+            directOverride: true,
+        },
+    },
+    // --- Zhipu GLM (direct, OpenAI-compatible v4 API) ---
+    GLM_4_6: {
+        id: 'glm-4.6',
+        config: {
+            name: 'GLM 4.6',
+            size: ModelSize.REGULAR,
+            provider: 'zhipu',
+            creditCost: 2,
+            contextSize: 200000, // 200K Context
+            directOverride: true,
+        },
     }
 } as const;
 

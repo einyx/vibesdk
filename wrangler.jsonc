@@ -82,46 +82,26 @@
 		"binding": "BROWSER",
 		"remote": true
 	},
-    "dispatch_namespaces": [
-        {
-            "binding": "DISPATCHER",
-            "namespace": "vibesdk-default-namespace",
-            "remote": true
-        }
-    ],
-    "artifacts": [
-        {
-            "binding": "ARTIFACTS",
-            "namespace": "vibesdk-production"
-        }
-    ],
-	"containers": [
-		{
-			"class_name": "UserAppSandboxService",
-			"image": "./SandboxDockerfile",
-            // "image": "registry.cloudflare.com/vibesdk-production-userappsandboxservice:cfe197fc",
-            // Altering max_instances value will have no effect. Please use the MAX_SANDBOX_INSTANCES var instead.
-			"max_instances": 1400,
-            // ATTENTION: Altering instance_type value will have no effect. Please use the SANDBOX_INSTANCE_TYPE var instead.
-            "instance_type": {
-                "vcpu": 4,
-                "memory_mib": 8192,
-                "disk_mb": 10240
-            },
-            "rollout_step_percentage": 100,
-			"ssh": {
-				"enabled": true
-			}
-		}
-	],
+    // // // // // // // // // // // // // // // // // "dispatch_namespaces": [
+ //     {
+ //         "binding": "DISPATCHER",
+ //         "namespace": "orange-build-default-namespace",
+ //         "experimental_remote": true
+ //     }
+ // ],
+	// No-purchase variant: Cloudflare containers need the Workers Paid plan,
+	// so the sandbox class ships unbound for now. App previews are off — the
+	// builder itself (sign-in, chat, code generation) runs on the free plan.
+	"containers": [],
 	"d1_databases": [
-		{
-			"binding": "DB",
-			"database_name": "vibesdk-db",
-			"database_id": "c4721a2b-b96a-428a-8b2a-b3d255b307e9",
-			"migrations_dir": "migrations"
-		}
-	],
+        {
+            "binding": "DB",
+            "database_name": "vibesdk-db",
+            "database_id": "721cbdfb-8334-4d29-a8c2-d137220e201e",
+            "migrations_dir": "migrations",
+            "remote": false
+        }
+    ],
 	"durable_objects": {
 		"bindings": [
 			{
@@ -150,21 +130,25 @@
             }
 		]
 	},
-    "worker_loaders": [
-        {
-            "binding": "LOADER"
-        }
-    ],
-    "r2_buckets": [
-      {
-        "binding": "TEMPLATES_BUCKET",
-        "bucket_name": "vibesdk-templates"
-      }
-    ],
+    // No-purchase variant: worker_loaders (Dynamic Workers) need the paid
+    // plan. The LOADER binding is unused by the worker code today, so the
+    // bundle ships without it.
+    // "worker_loaders": [
+    //     {
+    //         "binding": "LOADER"
+    //     }
+    // ],
+    // No-purchase variant: R2 is not enabled on this account. Template
+    // screenshots degrade (they write through TEMPLATES_BUCKET). The
+    // template catalog and zips ship as static assets under
+    // public/templates/ and are read through ASSETS — see
+    // BaseSandboxService.getTemplateFile.
+    "r2_buckets": [],
     "kv_namespaces": [
         {
             "binding": "VibecoderStore",
-            "id": "f066f3c2e4824981b48e8586c04db9c1"
+            "id": "bc693c458d9e458f947cadc9f4be6ff8",
+            "remote": false
         }
     ],
     // "placement": {
@@ -205,21 +189,19 @@
 	],
 	"routes": [
         {
-            "pattern": "build.cloudflare.dev",
+            "pattern": "apps.prysm.sh",
             "custom_domain": true
         },
         {
-            "pattern": "*build-preview.cloudflare.dev/*",
+            "pattern": "*apps.prysm.sh/*",
             "custom_domain": false,
-            "zone_id": "db01fac4261b2604aacad8410443a3e2"
+            "zone_id": "e5edb1105999e18a26f1e2354c3fa814"
         }
     ],
 	"vars": {
         "TEMPLATES_REPOSITORY": "https://github.com/cloudflare/vibesdk-templates",
-        "DISPATCH_NAMESPACE": "vibesdk-default-namespace",
+        "DISPATCH_NAMESPACE": "",
         "CLOUDFLARE_AI_GATEWAY": "vibesdk-gateway",
-        // Cloudflare Artifacts namespace for the read-only Repo viewer proxy.
-        // Must match the `artifacts` binding namespace above.
         "ARTIFACTS_NAMESPACE": "vibesdk-production",
         "PLATFORM_CAPABILITIES": {
             "features": {
@@ -235,12 +217,22 @@
             },
             "version": "1.0.0"
         },
-        "CUSTOM_DOMAIN": "",
         "MAX_SANDBOX_INSTANCES": "10",
         "SANDBOX_INSTANCE_TYPE": "standard-3",
         "DEV_BROWSER_SIDECAR_URL": "http://127.0.0.1:9223",
-        "DEV_BROWSER_PREVIEW_ORIGIN": "http://localhost:5173"
+        "DEV_BROWSER_PREVIEW_ORIGIN": "http://localhost:5173",
+        "CUSTOM_DOMAIN": "apps.prysm.sh"
     },
 	"workers_dev": false,
-	"preview_urls": false
+    "preview_urls": false,
+    // No-purchase variant: the Artifacts *binding* needs the Workers Paid
+    // plan. The artifacts feature itself rides the REST API with
+    // ARTIFACTS_API_TOKEN (see ArtifactsController), so the worker ships
+    // without the binding.
+    // "artifacts": [
+    //     {
+    //         "binding": "ARTIFACTS",
+    //         "namespace": "vibesdk-production"
+    //     }
+    // ]
 }

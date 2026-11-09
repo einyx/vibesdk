@@ -1,11 +1,12 @@
 import { ModelSize, type AIModelConfig } from '../inferutils/config.types';
 
-export const THINK_MODEL_ID = 'google-ai-studio/gemini-3.6-flash';
+export const THINK_MODEL_ID = 'glm-4.6';
 
 export const THINK_MODEL_CONFIG: AIModelConfig = {
-	name: 'Gemini 3.6 Flash',
+	name: 'GLM 4.6',
 	size: ModelSize.REGULAR,
-	provider: 'google-ai-studio',
+	provider: 'zhipu',
 	creditCost: 2,
-	contextSize: 1_048_576,
+	contextSize: 200_000,
+	directOverride: true,
 };

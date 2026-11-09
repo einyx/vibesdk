@@ -1,6 +1,7 @@
 import { useNavigate, useSearchParams } from 'react-router';
 import { motion } from 'framer-motion';
 import { usePaginatedApps } from '@/hooks/use-paginated-apps';
+import { usePageHeader } from '@/components/layout/header-context';
 import { AppListContainer } from '@/components/shared/AppListContainer';
 import { AppFiltersForm } from '@/components/shared/AppFiltersForm';
 import { AppSortTabs } from '@/components/shared/AppSortTabs';
@@ -9,6 +10,13 @@ import { GlobeIcon } from '@phosphor-icons/react';
 import { BrandEmphasisIcon } from '@/components/shared/BrandEmphasisIcon';
 
 export default function DiscoverPage() {
+	usePageHeader({
+		leading: (
+			<span className="flex items-center gap-2 text-sm font-medium">
+				Discover
+			</span>
+		),
+	});
 	const navigate = useNavigate();
 	const [searchParams, setSearchParams] = useSearchParams();
 

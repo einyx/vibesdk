@@ -250,7 +250,9 @@ export class ThinkCodingBehavior
 		const gatewayToken = tokenEnv.CLOUDFLARE_AI_GATEWAY_TOKEN || tokenEnv.CLOUDFLARE_API_TOKEN;
 		const usesStoredKeys = !conf.defaultHeaders?.['cf-aig-authorization'];
 		const headers: Record<string, string> = { ...(conf.defaultHeaders ?? {}) };
-		if (gatewayToken && !headers['cf-aig-authorization']) {
+		// The gateway-auth header only makes sense on gateway routes; direct
+		// providers authenticate with the plain bearer token instead.
+		if (gatewayToken && !aiModelConfig.directOverride && !headers['cf-aig-authorization']) {
 			headers['cf-aig-authorization'] = `Bearer ${gatewayToken}`;
 		}
 
@@ -258,12 +260,16 @@ export class ThinkCodingBehavior
 		// binding), forwarding `CLOUDFLARE_GATEWAY_ID: env.CLOUDFLARE_AI_GATEWAY`.
 		// This deliberately ignores `CLOUDFLARE_AI_GATEWAY_URL` (which may point at a different
 		// gateway/account the platform token isn't authorized for).
+		// Direct providers (workers-ai) are exempt: their baseURL from
+		// `getConfigurationForModel` is already the upstream endpoint, and the
+		// bearer token IS the credential — no gateway route, no stored keys.
 		const env = this.env as unknown as {
 			CLOUDFLARE_ACCOUNT_ID?: string;
 			CLOUDFLARE_AI_GATEWAY?: string;
 		};
+		const isDirectProvider = aiModelConfig.directOverride === true;
 		let baseURL = conf.baseURL;
-		if (env.CLOUDFLARE_ACCOUNT_ID && env.CLOUDFLARE_AI_GATEWAY) {
+		if (!isDirectProvider && env.CLOUDFLARE_ACCOUNT_ID && env.CLOUDFLARE_AI_GATEWAY) {
 			baseURL = `https://gateway.ai.cloudflare.com/v1/${env.CLOUDFLARE_ACCOUNT_ID}/${env.CLOUDFLARE_AI_GATEWAY}/compat`;
 		}
 
@@ -275,7 +281,7 @@ export class ThinkCodingBehavior
 				modelName,
 				contextSize: aiModelConfig.contextSize,
 				headers: Object.keys(headers).length > 0 ? headers : undefined,
-				useStoredKeys: usesStoredKeys,
+				useStoredKeys: !isDirectProvider && usesStoredKeys,
 			},
 			systemPrompt: this.buildSystemPrompt(modelName, aiModelConfig.provider),
 			previewUrl: await this.getBrowserPreviewURL(0).catch(() => undefined),
@@ -524,6 +530,10 @@ export class ThinkCodingBehavior
 
 		const stub = await this.getThinkStub();
 		try {
+			// Re-push the model config before each turn: a deploy can change the
+			// pinned model while an existing agent DO keeps its old config, and
+			// initialize() only runs for brand-new spaces.
+			await this.configureThinkAgent();
 			await stub.chat(text, forwarder);
 		} finally {
 			this.broadcast(WebSocketMessageResponses.USAGE_UPDATED, {

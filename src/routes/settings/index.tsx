@@ -40,6 +40,7 @@ import { useCopyToClipboard } from '@/hooks/use-copy-to-clipboard';
 import { CloudflareAccountSelector } from '@/components/cloudflare-account-selector';
 import { ConnectedAccounts } from '@/components/connected-accounts';
 import { BiohazardIcon, TrashIcon } from '@phosphor-icons/react';
+import { usePageHeader } from '@/components/layout/header-context';
 
 type CreatedApiKey = {
 	key: string;
@@ -84,6 +85,11 @@ async function fetchApiKeys(): Promise<ApiKeysData> {
 }
 
 export default function SettingsPage() {
+	usePageHeader({
+		leading: (
+			<span className="flex items-center gap-2 text-sm font-medium">Settings</span>
+		),
+	});
 	const { user } = useAuth();
 	const queryClient = useQueryClient();
 	const [searchParams, setSearchParams] = useSearchParams();

@@ -7,8 +7,14 @@ import { AppFiltersForm } from '@/components/shared/AppFiltersForm';
 import { AppSortTabs } from '@/components/shared/AppSortTabs';
 import { VisibilityFilter } from '@/components/shared/VisibilityFilter';
 import type { AppSortOption } from '@/api-types';
+import { usePageHeader } from '@/components/layout/header-context';
 
 export default function AppsPage() {
+	usePageHeader({
+		leading: (
+			<span className="flex items-center gap-2 text-sm font-medium">Apps</span>
+		),
+	});
 	const navigate = useNavigate();
 	const [searchParams, setSearchParams] = useSearchParams();
 

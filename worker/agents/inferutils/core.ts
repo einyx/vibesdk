@@ -455,6 +455,18 @@ export async function getConfigurationForModel(
                     baseURL: 'https://api.anthropic.com/v1/',
                     apiKey: env.ANTHROPIC_API_KEY,
                 };
+            case 'zhipu':
+                return {
+                    baseURL: 'https://open.bigmodel.cn/api/paas/v4',
+                    apiKey: env.GLM_API_KEY || env.ZHIPU_API_KEY,
+                };
+            case 'workers-ai':
+                // Workers AI's OpenAI-compatible endpoint. The gateway token
+                // authenticates it, so no extra credential is needed.
+                return {
+                    baseURL: `https://api.cloudflare.com/client/v4/accounts/${env.CLOUDFLARE_ACCOUNT_ID}/ai/v1`,
+                    apiKey: env.CLOUDFLARE_AI_GATEWAY_TOKEN || env.CLOUDFLARE_API_TOKEN,
+                };
             default:
                 providerForcedOverride = modelConfig.provider as AIGatewayProviders;
                 break;
