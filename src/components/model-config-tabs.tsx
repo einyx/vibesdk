@@ -128,6 +128,7 @@ export function ModelConfigTabs({
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-text-tertiary" />
             <Input
+              aria-label="Search configurations"
               placeholder="Search configurations..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}

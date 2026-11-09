@@ -451,6 +451,17 @@ export class CodingAgentController extends BaseController {
                     return CodingAgentController.createErrorResponse<AgentPreviewResponse>('App is not public. Preview deployment is only available for public apps.', 403);
                 }
             }
+            // Previews host the generated app inside a Durable Object Facet,
+            // loaded through the Worker Loader. Both are Workers Paid features,
+            // so a deployment without the LOADER binding cannot host a preview
+            // at all. Say so plainly instead of failing as a generic 500.
+            if (!('LOADER' in env) || !(env as { LOADER?: unknown }).LOADER) {
+                return CodingAgentController.createErrorResponse<AgentPreviewResponse>(
+                    'App previews are not available on this deployment: hosting a preview needs Workers for Platforms (a paid plan). The code is still written and can be deployed to Cloudflare.',
+                    503,
+                );
+            }
+
             this.logger.info(`Deploying preview for agent: ${agentId}`);
 
             try {

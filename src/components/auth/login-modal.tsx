@@ -428,6 +428,7 @@ export function LoginModal({
 									disabled={isLoading}
 								>
 									<InputGroup.Input
+										aria-label="Password"
 										type={
 											showPassword ? 'text' : 'password'
 										}
