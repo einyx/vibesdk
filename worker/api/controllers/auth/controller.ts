@@ -833,9 +833,10 @@ export class AuthController extends BaseController {
                 google: !!env.GOOGLE_CLIENT_ID && !!env.GOOGLE_CLIENT_SECRET,
                 github: !!env.GITHUB_CLIENT_ID && !!env.GITHUB_CLIENT_SECRET,
                 cloudflare: CloudflareConnectOAuthProvider.isLoginConfigured(env),
+                logto: !!env.LOGTO_CLIENT_ID && !!env.LOGTO_CLIENT_SECRET && !!env.LOGTO_ISSUER,
                 email: isEmailAuthEnabled(env)
             };
-            const hasOAuth = providers.google || providers.github || providers.cloudflare;
+            const hasOAuth = providers.google || providers.github || providers.cloudflare || providers.logto;
             
             // Include CSRF token with provider info
             const csrfToken = CsrfService.getOrGenerateToken(request, false);

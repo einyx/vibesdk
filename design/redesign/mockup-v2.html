@@ -1,0 +1,884 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>prysm build — UI redesign v2</title>
+<style>
+  /* ─────────────────────────────────────────────────────────────
+     Design tokens
+     ───────────────────────────────────────────────────────────── */
+  :root {
+    --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --font-mono: 'JetBrains Mono', 'SF Mono', ui-monospace, 'Cascadia Code', Menlo, monospace;
+
+    --r-xs: 6px; --r-sm: 10px; --r-md: 14px; --r-lg: 20px; --r-xl: 28px; --r-full: 999px;
+
+    --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 24px; --sp-6: 32px;
+    --sp-7: 48px; --sp-8: 64px; --sp-9: 96px;
+
+    --dur-1: 120ms; --dur-2: 220ms; --dur-3: 420ms;
+    --ease: cubic-bezier(.2,.8,.2,1);
+  }
+
+  [data-theme="dark"] {
+    --bg-0: #08080b;         /* app background            */
+    --bg-1: #0d0d12;         /* rail / sidebar            */
+    --bg-2: #121219;         /* panels                   */
+    --bg-3: #17171f;         /* raised surfaces          */
+    --bg-4: #1e1e28;         /* inputs / hover           */
+    --line-1: #23232e;       /* hairline borders         */
+    --line-2: #2e2e3b;
+    --tx-1: #f2f2f5;         /* primary text             */
+    --tx-2: #a5a5b4;         /* secondary                */
+    --tx-3: #6e6e80;         /* tertiary / meta          */
+    --accent: #7c6cff;       /* prism indigo             */
+    --accent-2: #b98cff;
+    --accent-soft: rgba(124,108,255,.14);
+    --ok: #4ade80;
+    --warn: #fbbf24;
+    --err: #fb7185;
+    --spectrum: linear-gradient(90deg,#ff4d4d,#ffb84d,#ffe14d,#4ade80,#4dd2ff,#7c6cff,#ff6ec7);
+    --shadow-1: 0 1px 2px rgba(0,0,0,.4);
+    --shadow-2: 0 12px 32px -8px rgba(0,0,0,.65);
+    --shadow-3: 0 32px 80px -24px rgba(0,0,0,.8);
+  }
+
+  [data-theme="light"] {
+    --bg-0: #fbfbfd; --bg-1: #f4f4f7; --bg-2: #ffffff; --bg-3: #ffffff; --bg-4: #f1f1f5;
+    --line-1: #e6e6ec; --line-2: #d8d8e2;
+    --tx-1: #0d0d12; --tx-2: #55555f; --tx-3: #8b8b98;
+    --accent: #5b48f5; --accent-2: #8b6cff; --accent-soft: rgba(91,72,245,.10);
+    --ok: #16a34a; --warn: #b45309; --err: #e11d48;
+    --spectrum: linear-gradient(90deg,#ff4d4d,#ffb84d,#ffe14d,#4ade80,#4dd2ff,#5b48f5,#ff6ec7);
+    --shadow-1: 0 1px 2px rgba(16,16,32,.06);
+    --shadow-2: 0 12px 32px -12px rgba(16,16,32,.18);
+    --shadow-3: 0 32px 80px -28px rgba(16,16,32,.25);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg-0);
+    color: var(--tx-1);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    letter-spacing: -0.011em;
+  }
+  button { font: inherit; color: inherit; }
+
+  /* ─────────────────────────────────────────────────────────────
+     Chrome: screen switcher (mockup-only chrome, not part of the app)
+     ───────────────────────────────────────────────────────────── */
+  .sheet-bar {
+    position: sticky; top: 0; z-index: 99;
+    display: flex; align-items: center; gap: var(--sp-4);
+    padding: 10px 16px;
+    background: color-mix(in srgb, var(--bg-0) 88%, transparent);
+    backdrop-filter: blur(14px);
+    border-bottom: 1px solid var(--line-1);
+  }
+  .sheet-bar .brand {
+    display: flex; align-items: center; gap: 10px;
+    font-weight: 620; letter-spacing: -0.02em;
+  }
+  .sheet-bar .prism {
+    width: 22px; height: 22px; border-radius: 7px;
+    background: var(--spectrum);
+    box-shadow: var(--shadow-1);
+  }
+  .sheet-bar .sub { color: var(--tx-3); font-size: 12px; font-weight: 500; }
+  .sheet-tabs { display: flex; gap: 4px; margin-left: auto; flex-wrap: wrap; }
+  .sheet-tabs button {
+    padding: 6px 12px; border-radius: var(--r-full);
+    border: 1px solid var(--line-1); background: var(--bg-2);
+    color: var(--tx-2); font-size: 12.5px; font-weight: 560; cursor: pointer;
+    transition: all var(--dur-1) var(--ease);
+  }
+  .sheet-tabs button:hover { color: var(--tx-1); border-color: var(--line-2); }
+  .sheet-tabs button[aria-pressed="true"] {
+    background: var(--accent-soft); border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+    color: var(--tx-1);
+  }
+  .theme-toggle {
+    padding: 6px 10px; border-radius: var(--r-full); cursor: pointer;
+    border: 1px solid var(--line-1); background: var(--bg-2); color: var(--tx-2); font-size: 12px;
+  }
+
+  .screen { display: none; }
+  .screen.is-active { display: block; }
+
+  /* ─────────────────────────────────────────────────────────────
+     App shell
+     ───────────────────────────────────────────────────────────── */
+  .app {
+    display: grid;
+    grid-template-columns: 68px 1fr;
+    height: calc(100vh - 53px);
+    overflow: hidden;
+  }
+
+  /* Rail */
+  .rail {
+    display: flex; flex-direction: column; align-items: center; gap: var(--sp-2);
+    padding: var(--sp-4) 0;
+    background: var(--bg-1);
+    border-right: 1px solid var(--line-1);
+  }
+  .rail-logo {
+    width: 38px; height: 38px; border-radius: var(--r-md);
+    background: var(--spectrum); margin-bottom: var(--sp-4);
+    box-shadow: var(--shadow-2);
+    position: relative;
+  }
+  .rail-logo::after {
+    content: ''; position: absolute; inset: 9px;
+    border-radius: 6px; background: var(--bg-1);
+  }
+  .rail-btn {
+    width: 40px; height: 40px; border-radius: var(--r-md);
+    display: grid; place-items: center; cursor: pointer;
+    color: var(--tx-3); border: 1px solid transparent; background: transparent;
+    transition: all var(--dur-1) var(--ease); position: relative;
+  }
+  .rail-btn:hover { color: var(--tx-1); background: var(--bg-3); }
+  .rail-btn.is-active { color: var(--tx-1); background: var(--bg-3); border-color: var(--line-1); }
+  .rail-btn.is-active::before {
+    content: ''; position: absolute; left: -14px; top: 50%; translate: 0 -50%;
+    width: 3px; height: 18px; border-radius: 0 3px 3px 0; background: var(--accent);
+  }
+  .rail-spacer { flex: 1; }
+  .avatar {
+    width: 34px; height: 34px; border-radius: var(--r-full);
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    display: grid; place-items: center; font-size: 12px; font-weight: 700; color: #fff;
+  }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); }
+
+  /* Main column */
+  .main { display: flex; flex-direction: column; min-width: 0; background: var(--bg-0); }
+
+  .topbar {
+    display: flex; align-items: center; gap: var(--sp-3);
+    height: 52px; padding: 0 var(--sp-5);
+    border-bottom: 1px solid var(--line-1);
+    background: var(--bg-0);
+  }
+  .crumb { display: flex; align-items: center; gap: var(--sp-2); color: var(--tx-3); font-size: 13px; }
+  .crumb strong { color: var(--tx-1); font-weight: 580; }
+  .sep { color: var(--line-2); }
+  .spacer { flex: 1; }
+
+  .chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 5px 10px; border-radius: var(--r-full);
+    background: var(--bg-3); border: 1px solid var(--line-1);
+    color: var(--tx-2); font-size: 12px; font-weight: 540; white-space: nowrap;
+  }
+  .chip.accent { color: var(--accent-2); border-color: color-mix(in srgb, var(--accent) 40%, transparent); background: var(--accent-soft); }
+  .chip .dot { background: var(--ok); }
+  .chip .spark { color: var(--accent-2); }
+
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 8px 14px; border-radius: var(--r-sm);
+    border: 1px solid var(--line-1); background: var(--bg-3); color: var(--tx-1);
+    font-size: 13px; font-weight: 560; cursor: pointer;
+    transition: all var(--dur-1) var(--ease);
+  }
+  .btn:hover { border-color: var(--line-2); background: var(--bg-4); }
+  .btn.primary {
+    background: var(--accent); border-color: transparent; color: #fff;
+    box-shadow: 0 6px 18px -8px var(--accent);
+  }
+  .btn.primary:hover { filter: brightness(1.08); }
+  .btn.ghost { background: transparent; }
+  .btn.sm { padding: 5px 10px; font-size: 12px; }
+
+  /* ─────────────────────────────────────────────────────────────
+     Home
+     ───────────────────────────────────────────────────────────── */
+  .home {
+    flex: 1; overflow: auto;
+    display: flex; flex-direction: column; align-items: center;
+    padding: var(--sp-8) var(--sp-5) var(--sp-9);
+  }
+  .home-inner { width: 100%; max-width: 880px; }
+  .eyebrow {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-family: var(--font-mono); font-size: 11.5px; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--tx-3); margin-bottom: var(--sp-4);
+  }
+  .eyebrow .bar { width: 28px; height: 1px; background: var(--line-2); }
+  h1.title {
+    font-size: 40px; line-height: 1.08; font-weight: 660; letter-spacing: -0.035em;
+    margin: 0 0 var(--sp-4);
+  }
+  h1.title .grad {
+    background: var(--spectrum); -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .lede { color: var(--tx-2); font-size: 15.5px; max-width: 560px; margin: 0 0 var(--sp-6); }
+
+  .composer {
+    background: var(--bg-2); border: 1px solid var(--line-1); border-radius: var(--r-xl);
+    box-shadow: var(--shadow-2); overflow: hidden; transition: border-color var(--dur-2) var(--ease);
+  }
+  .composer:focus-within { border-color: color-mix(in srgb, var(--accent) 55%, var(--line-1)); }
+  .composer .body { padding: var(--sp-4) var(--sp-4) var(--sp-2); min-height: 84px; }
+  .composer .placeholder { color: var(--tx-3); font-size: 15px; }
+  .composer .footer {
+    display: flex; align-items: center; gap: var(--sp-2);
+    padding: var(--sp-2) var(--sp-3) var(--sp-3);
+  }
+  .tool {
+    width: 30px; height: 30px; border-radius: var(--r-sm); display: grid; place-items: center;
+    color: var(--tx-3); background: transparent; border: 1px solid transparent; cursor: pointer;
+  }
+  .tool:hover { color: var(--tx-1); background: var(--bg-4); }
+
+  .section-head {
+    display: flex; align-items: baseline; gap: var(--sp-3); margin: var(--sp-7) 0 var(--sp-4);
+  }
+  .section-head h2 { font-size: 15px; font-weight: 620; margin: 0; letter-spacing: -0.01em; }
+  .section-head .hint { color: var(--tx-3); font-size: 12.5px; }
+  .section-head a { margin-left: auto; color: var(--accent-2); font-size: 12.5px; font-weight: 560; text-decoration: none; }
+
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(232px, 1fr)); gap: var(--sp-4); }
+  .card {
+    background: var(--bg-2); border: 1px solid var(--line-1); border-radius: var(--r-lg);
+    padding: var(--sp-4); cursor: pointer; position: relative; overflow: hidden;
+    transition: transform var(--dur-2) var(--ease), border-color var(--dur-2) var(--ease), box-shadow var(--dur-2) var(--ease);
+  }
+  .card:hover { transform: translateY(-2px); border-color: var(--line-2); box-shadow: var(--shadow-2); }
+  .card .thumb {
+    height: 116px; border-radius: var(--r-md); margin-bottom: var(--sp-3);
+    background: var(--bg-3); border: 1px solid var(--line-1); position: relative; overflow: hidden;
+  }
+  .card .thumb::after {
+    content: ''; position: absolute; inset: 0;
+    background: radial-gradient(120% 90% at 10% 0%, color-mix(in srgb, var(--accent) 24%, transparent), transparent 60%);
+  }
+  .card h3 { margin: 0 0 4px; font-size: 13.5px; font-weight: 600; }
+  .card p { margin: 0; color: var(--tx-3); font-size: 12.5px; }
+  .card .meta { display: flex; gap: 6px; margin-top: var(--sp-3); }
+
+  /* ─────────────────────────────────────────────────────────────
+     Chat
+     ───────────────────────────────────────────────────────────── */
+  .chat { display: grid; grid-template-columns: 1fr 320px; flex: 1; min-height: 0; }
+  .chat-main { display: flex; flex-direction: column; min-width: 0; }
+  .thread { flex: 1; overflow: auto; padding: var(--sp-6) 0 var(--sp-4); }
+  .thread-inner { max-width: 780px; margin: 0 auto; padding: 0 var(--sp-6); display: flex; flex-direction: column; gap: var(--sp-5); }
+
+  .msg { display: flex; gap: var(--sp-3); }
+  .msg .who {
+    width: 28px; height: 28px; border-radius: var(--r-sm); flex: none; display: grid; place-items: center;
+    font-size: 11px; font-weight: 700;
+  }
+  .msg.user .who { background: var(--bg-4); color: var(--tx-2); border: 1px solid var(--line-1); }
+  .msg.agent .who { background: var(--spectrum); color: #fff; }
+  .msg .bubble { min-width: 0; }
+  .msg.user .bubble { font-size: 15px; font-weight: 520; padding-top: 3px; }
+  .msg.agent .bubble { color: var(--tx-1); }
+
+  .plan {
+    border: 1px solid var(--line-1); border-radius: var(--r-md); background: var(--bg-2);
+    overflow: hidden; margin-top: var(--sp-3);
+  }
+  .plan-head {
+    display: flex; align-items: center; gap: var(--sp-2);
+    padding: 10px var(--sp-3); border-bottom: 1px solid var(--line-1); background: var(--bg-3);
+  }
+  .plan-head .t { font-size: 12.5px; font-weight: 600; }
+  .plan-step {
+    display: flex; align-items: center; gap: 10px; padding: 9px var(--sp-3);
+    font-size: 13px; border-top: 1px solid var(--line-1);
+  }
+  .plan-step:first-of-type { border-top: none; }
+  .plan-step .st { width: 16px; height: 16px; border-radius: 50%; flex: none; display: grid; place-items: center; font-size: 10px; }
+  .st.done { background: color-mix(in srgb, var(--ok) 22%, transparent); color: var(--ok); }
+  .st.run { background: var(--accent-soft); color: var(--accent-2); }
+  .st.todo { background: var(--bg-4); color: var(--tx-3); }
+  .plan-step .lbl { flex: 1; color: var(--tx-1); }
+  .plan-step .lbl.muted { color: var(--tx-3); }
+  .plan-step .code { font-family: var(--font-mono); font-size: 11.5px; color: var(--tx-3); }
+
+  .files { margin-top: var(--sp-3); border: 1px solid var(--line-1); border-radius: var(--r-md); overflow: hidden; }
+  .file-row {
+    display: flex; align-items: center; gap: 10px; padding: 8px var(--sp-3);
+    font-family: var(--font-mono); font-size: 12px; border-top: 1px solid var(--line-1);
+  }
+  .file-row:first-child { border-top: none; }
+  .file-row .path { color: var(--tx-1); }
+  .file-row .add { color: var(--ok); }
+  .file-row .del { color: var(--err); }
+
+  .composer-dock {
+    border-top: 1px solid var(--line-1); padding: var(--sp-3) var(--sp-6) var(--sp-4);
+    background: linear-gradient(to top, var(--bg-0) 70%, transparent);
+  }
+  .composer-dock .composer { box-shadow: none; border-radius: var(--r-lg); max-width: 780px; margin: 0 auto; }
+
+  /* Right rail in chat */
+  .rail-panel {
+    border-left: 1px solid var(--line-1); background: var(--bg-1);
+    display: flex; flex-direction: column; overflow: auto;
+  }
+  .panel-section { padding: var(--sp-4); border-bottom: 1px solid var(--line-1); }
+  .panel-title {
+    font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--tx-3); margin: 0 0 var(--sp-3);
+  }
+  .kv { display: flex; justify-content: space-between; gap: var(--sp-3); padding: 5px 0; font-size: 12.5px; }
+  .kv .k { color: var(--tx-3); }
+  .kv .v { color: var(--tx-1); font-weight: 540; }
+  .meter { height: 5px; border-radius: var(--r-full); background: var(--bg-4); overflow: hidden; margin-top: 6px; }
+  .meter i { display: block; height: 100%; background: var(--spectrum); border-radius: inherit; }
+
+  /* ─────────────────────────────────────────────────────────────
+     Workspace (app view)
+     ───────────────────────────────────────────────────────────── */
+  .ws { display: grid; grid-template-columns: 240px 1fr 1fr; flex: 1; min-height: 0; }
+  .ws-left { border-right: 1px solid var(--line-1); background: var(--bg-1); overflow: auto; padding: var(--sp-3); }
+  .tree { font-family: var(--font-mono); font-size: 12px; }
+  .tree .node { display: flex; align-items: center; gap: 6px; padding: 4px 6px; border-radius: var(--r-xs); color: var(--tx-2); }
+  .tree .node.active { background: var(--bg-3); color: var(--tx-1); }
+  .tree .node.dir { color: var(--tx-3); }
+  .tree .node.child { padding-left: 18px; }
+  .ws-editor { display: flex; flex-direction: column; min-width: 0; background: var(--bg-0); }
+  .editor-head {
+    display: flex; align-items: center; gap: var(--sp-2); padding: 0 var(--sp-3); height: 38px;
+    border-bottom: 1px solid var(--line-1); font-family: var(--font-mono); font-size: 11.5px; color: var(--tx-3);
+  }
+  .editor-body { flex: 1; padding: var(--sp-4); font-family: var(--font-mono); font-size: 12.5px; line-height: 1.75; overflow: auto; }
+  .ln { display: flex; gap: 14px; }
+  .ln .n { color: var(--tx-3); width: 24px; text-align: right; user-select: none; }
+  .k { color: #c792ea; } .s { color: #c3e88d; } .f { color: #82aaff; } .c { color: var(--tx-3); font-style: italic; }
+  .ws-preview { border-left: 1px solid var(--line-1); display: flex; flex-direction: column; background: var(--bg-1); }
+  .preview-head { display: flex; align-items: center; gap: var(--sp-2); height: 38px; padding: 0 var(--sp-3); border-bottom: 1px solid var(--line-1); }
+  .urlbar {
+    flex: 1; height: 26px; border-radius: var(--r-full); background: var(--bg-3); border: 1px solid var(--line-1);
+    display: flex; align-items: center; padding: 0 10px; font-family: var(--font-mono); font-size: 11px; color: var(--tx-3);
+  }
+  .mock-app { flex: 1; margin: var(--sp-4); background: var(--bg-2); border: 1px solid var(--line-1); border-radius: var(--r-md); padding: var(--sp-5); overflow: auto; }
+  .mock-app h4 { margin: 0 0 var(--sp-3); font-size: 15px; }
+  .todo { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--line-1); font-size: 13px; }
+  .todo .box { width: 16px; height: 16px; border-radius: 5px; border: 1.5px solid var(--line-2); }
+  .todo.done .box { background: var(--accent); border-color: var(--accent); }
+  .todo.done span { color: var(--tx-3); text-decoration: line-through; }
+
+  .statusbar {
+    display: flex; align-items: center; gap: var(--sp-4); height: 26px; padding: 0 var(--sp-3);
+    border-top: 1px solid var(--line-1); background: var(--bg-1);
+    font-family: var(--font-mono); font-size: 11px; color: var(--tx-3);
+  }
+
+  /* ─────────────────────────────────────────────────────────────
+     Discover / grid page
+     ───────────────────────────────────────────────────────────── */
+  .page { flex: 1; overflow: auto; padding: var(--sp-6) var(--sp-7) var(--sp-9); }
+  .page-inner { max-width: 1180px; margin: 0 auto; }
+  .page-head { display: flex; align-items: flex-end; gap: var(--sp-4); margin-bottom: var(--sp-6); }
+  .page-head h1 { font-size: 26px; font-weight: 650; letter-spacing: -0.03em; margin: 0; }
+  .page-head p { color: var(--tx-2); margin: 6px 0 0; font-size: 13.5px; }
+  .filters { display: flex; gap: var(--sp-2); margin-bottom: var(--sp-5); flex-wrap: wrap; }
+  .filter {
+    padding: 6px 12px; border-radius: var(--r-full); border: 1px solid var(--line-1); background: var(--bg-2);
+    color: var(--tx-2); font-size: 12.5px; font-weight: 540; cursor: pointer;
+  }
+  .filter.on { background: var(--tx-1); color: var(--bg-0); border-color: transparent; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(268px, 1fr)); gap: var(--sp-5); }
+  .tile { background: var(--bg-2); border: 1px solid var(--line-1); border-radius: var(--r-lg); overflow: hidden; cursor: pointer; transition: all var(--dur-2) var(--ease); }
+  .tile:hover { transform: translateY(-3px); box-shadow: var(--shadow-3); border-color: var(--line-2); }
+  .tile .shot { height: 156px; background: var(--bg-3); border-bottom: 1px solid var(--line-1); position: relative; overflow: hidden; }
+  .tile .shot::after { content: ''; position: absolute; inset: 0; background: radial-gradient(100% 80% at 20% 0%, color-mix(in srgb, var(--accent) 26%, transparent), transparent 55%); }
+  .tile .info { padding: var(--sp-4); }
+  .tile .info h3 { margin: 0 0 3px; font-size: 14px; font-weight: 600; }
+  .tile .info p { margin: 0; color: var(--tx-3); font-size: 12.5px; }
+  .tile .row { display: flex; align-items: center; gap: 8px; margin-top: var(--sp-3); }
+  .tile .who { display: flex; align-items: center; gap: 7px; margin-left: auto; font-size: 12px; color: var(--tx-3); }
+  .mini-av { width: 20px; height: 20px; border-radius: 50%; background: linear-gradient(135deg,var(--accent),var(--accent-2)); }
+
+  /* ─────────────────────────────────────────────────────────────
+     Settings
+     ───────────────────────────────────────────────────────────── */
+  .settings { display: grid; grid-template-columns: 210px 1fr; flex: 1; min-height: 0; }
+  .settings-nav { border-right: 1px solid var(--line-1); background: var(--bg-1); padding: var(--sp-4) var(--sp-3); }
+  .settings-nav .item {
+    display: block; width: 100%; text-align: left; padding: 8px 10px; border-radius: var(--r-sm);
+    color: var(--tx-2); font-size: 13px; cursor: pointer; border: none; background: transparent; margin-bottom: 2px;
+  }
+  .settings-nav .item.on { background: var(--bg-3); color: var(--tx-1); font-weight: 560; }
+  .settings-body { overflow: auto; padding: var(--sp-6) var(--sp-7); }
+  .settings-inner { max-width: 720px; }
+  .group { margin-bottom: var(--sp-7); }
+  .group h3 { font-size: 13px; font-weight: 620; margin: 0 0 var(--sp-1); }
+  .group .desc { color: var(--tx-3); font-size: 12.5px; margin: 0 0 var(--sp-4); }
+  .setting {
+    display: flex; align-items: center; gap: var(--sp-4); padding: var(--sp-4);
+    background: var(--bg-2); border: 1px solid var(--line-1); border-radius: var(--r-md); margin-bottom: var(--sp-3);
+  }
+  .setting .txt { flex: 1; }
+  .setting .txt b { display: block; font-size: 13.5px; font-weight: 580; margin-bottom: 2px; }
+  .setting .txt span { color: var(--tx-3); font-size: 12.5px; }
+  .switch { width: 38px; height: 22px; border-radius: var(--r-full); background: var(--bg-4); position: relative; border: 1px solid var(--line-1); }
+  .switch.on { background: var(--accent); border-color: transparent; }
+  .switch i { position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: all var(--dur-2) var(--ease); }
+  .switch.on i { left: 18px; }
+  .field {
+    display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-3) var(--sp-4);
+    background: var(--bg-2); border: 1px solid var(--line-1); border-radius: var(--r-md); margin-bottom: var(--sp-3);
+  }
+  .field input {
+    flex: 1; background: transparent; border: none; outline: none; color: var(--tx-1);
+    font-family: var(--font-mono); font-size: 12.5px;
+  }
+  .field input::placeholder { color: var(--tx-3); }
+
+  .kbd {
+    font-family: var(--font-mono); font-size: 11px; padding: 2px 6px; border-radius: 5px;
+    border: 1px solid var(--line-1); background: var(--bg-3); color: var(--tx-2);
+  }
+</style>
+</head>
+<body>
+
+<div class="sheet-bar">
+  <div class="brand"><span class="prism"></span> prysm build <span class="sub">· UI redesign v2</span></div>
+  <div class="sheet-tabs" id="tabs">
+    <button data-screen="home" aria-pressed="true">Home</button>
+    <button data-screen="chat" aria-pressed="false">Chat</button>
+    <button data-screen="workspace" aria-pressed="false">Workspace</button>
+    <button data-screen="discover" aria-pressed="false">Discover</button>
+    <button data-screen="settings" aria-pressed="false">Settings</button>
+  </div>
+  <button class="theme-toggle" id="themeBtn">◐ theme</button>
+</div>
+
+<!-- ══════════════════════════════════ HOME ══════════════════════════════════ -->
+<section class="screen is-active" id="screen-home">
+  <div class="app">
+    <nav class="rail">
+      <div class="rail-logo"></div>
+      <button class="rail-btn is-active" title="Build">✦</button>
+      <button class="rail-btn" title="Discover">◈</button>
+      <button class="rail-btn" title="Apps">▤</button>
+      <button class="rail-btn" title="Chat">✉</button>
+      <div class="rail-spacer"></div>
+      <button class="rail-btn" title="Settings">⚙</button>
+      <div class="avatar">A</div>
+    </nav>
+
+    <main class="main">
+      <div class="topbar">
+        <div class="crumb"><strong>New app</strong></div>
+        <div class="spacer"></div>
+        <div class="chip"><span class="dot"></span> GLM 4.6</div>
+        <div class="chip"><span class="spark">✦</span> 12 credits</div>
+        <button class="btn sm">⌘K</button>
+      </div>
+
+      <div class="home">
+        <div class="home-inner">
+          <div class="eyebrow"><span class="bar"></span> prysm build <span class="bar"></span></div>
+          <h1 class="title">Describe it.<br /><span class="grad">Ship it in minutes.</span></h1>
+          <p class="lede">Your app is built by an agent that writes the code, runs it, and repairs it in a loop. You stay in the conversation.</p>
+
+          <div class="composer">
+            <div class="body"><span class="placeholder">A todo list app with due dates and reminders…</span></div>
+            <div class="footer">
+              <button class="tool" title="Attach">＋</button>
+              <button class="tool" title="Image">▣</button>
+              <button class="tool" title="Template">◱</button>
+              <div class="spacer"></div>
+              <div class="chip">GLM 4.6 <span style="opacity:.5">▾</span></div>
+              <button class="btn primary">Build <span style="opacity:.7">↵</span></button>
+            </div>
+          </div>
+
+          <div class="section-head">
+            <h2>Pick up where you left off</h2>
+            <span class="hint">3 apps in progress</span>
+            <a href="#">All apps →</a>
+          </div>
+          <div class="cards">
+            <div class="card">
+              <div class="thumb"></div>
+              <h3>Todo list</h3>
+              <p>Due dates, reminders, dark mode</p>
+              <div class="meta"><div class="chip">building</div><div class="chip">2m ago</div></div>
+            </div>
+            <div class="card">
+              <div class="thumb"></div>
+              <h3>Invoice tracker</h3>
+              <p>CSV import, PDF export</p>
+              <div class="meta"><div class="chip">ready</div><div class="chip">1h ago</div></div>
+            </div>
+            <div class="card">
+              <div class="thumb"></div>
+              <h3>Habit log</h3>
+              <p>Streaks, weekly chart</p>
+              <div class="meta"><div class="chip">ready</div><div class="chip">1d ago</div></div>
+            </div>
+          </div>
+
+          <div class="section-head">
+            <h2>Start from a template</h2>
+            <a href="#">Browse all →</a>
+          </div>
+          <div class="cards">
+            <div class="card"><div class="thumb"></div><h3>CRUD dashboard</h3><p>Table, filters, auth</p></div>
+            <div class="card"><div class="thumb"></div><h3>Marketing page</h3><p>Hero, pricing, footer</p></div>
+            <div class="card"><div class="thumb"></div><h3>REST API</h3><p>Routes, validation, docs</p></div>
+            <div class="card"><div class="thumb"></div><h3>Realtime board</h3><p>WebSocket, presence</p></div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════ CHAT ══════════════════════════════════ -->
+<section class="screen" id="screen-chat">
+  <div class="app">
+    <nav class="rail">
+      <div class="rail-logo"></div>
+      <button class="rail-btn" title="Build">✦</button>
+      <button class="rail-btn" title="Discover">◈</button>
+      <button class="rail-btn" title="Apps">▤</button>
+      <button class="rail-btn is-active" title="Chat">✉</button>
+      <div class="rail-spacer"></div>
+      <button class="rail-btn" title="Settings">⚙</button>
+      <div class="avatar">A</div>
+    </nav>
+
+    <main class="main">
+      <div class="topbar">
+        <div class="crumb"><span>Apps</span><span class="sep">/</span><strong>Todo list</strong></div>
+        <div class="spacer"></div>
+        <div class="chip"><span class="dot"></span> preview live</div>
+        <button class="btn sm">Open workspace</button>
+        <button class="btn primary sm">Deploy</button>
+      </div>
+
+      <div class="chat">
+        <div class="chat-main">
+          <div class="thread">
+            <div class="thread-inner">
+              <div class="msg user">
+                <div class="who">A</div>
+                <div class="bubble">create a todo list app with due dates</div>
+              </div>
+
+              <div class="msg agent">
+                <div class="who">✦</div>
+                <div class="bubble">
+                  <p style="margin:0 0 4px">Here's the plan — I'll build it in four passes and verify each one.</p>
+
+                  <div class="plan">
+                    <div class="plan-head"><span class="t">Build plan</span><span class="spacer"></span><span class="chip">GLM 4.6</span></div>
+                    <div class="plan-step"><span class="st done">✓</span><span class="lbl">Scaffold project &amp; routing</span><span class="code">src/app.tsx</span></div>
+                    <div class="plan-step"><span class="st done">✓</span><span class="lbl">Todo model with due dates</span><span class="code">src/store.ts</span></div>
+                    <div class="plan-step"><span class="st run">◆</span><span class="lbl">Reminder scheduling</span><span class="code">src/reminders.ts</span></div>
+                    <div class="plan-step"><span class="st todo">○</span><span class="lbl muted">Run &amp; repair loop</span><span class="code">preview</span></div>
+                  </div>
+
+                  <div class="files">
+                    <div class="file-row"><span class="add">＋</span><span class="path">src/components/TodoList.tsx</span></div>
+                    <div class="file-row"><span class="add">＋</span><span class="path">src/components/DueDate.tsx</span></div>
+                    <div class="file-row"><span class="del">－</span><span class="path">src/legacy/todo.ts</span></div>
+                    <div class="file-row"><span class="add">＋</span><span class="path">tests/todo.spec.ts</span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="composer-dock">
+            <div class="composer">
+              <div class="body" style="min-height:52px"><span class="placeholder">Ask for a change…</span></div>
+              <div class="footer">
+                <button class="tool">＋</button><button class="tool">▣</button>
+                <div class="spacer"></div>
+                <button class="btn primary sm">Send ↵</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <aside class="rail-panel">
+          <div class="panel-section">
+            <h4 class="panel-title">Session</h4>
+            <div class="kv"><span class="k">Model</span><span class="v">GLM 4.6</span></div>
+            <div class="kv"><span class="k">Provider</span><span class="v">Zhipu</span></div>
+            <div class="kv"><span class="k">Tokens</span><span class="v">18.4k</span></div>
+            <div class="kv"><span class="k">Latency</span><span class="v">1.9s</span></div>
+            <div class="meter"><i style="width:34%"></i></div>
+          </div>
+          <div class="panel-section">
+            <h4 class="panel-title">Plan</h4>
+            <div class="kv"><span class="k">Blueprint</span><span class="v">done</span></div>
+            <div class="kv"><span class="k">Implementation</span><span class="v">running</span></div>
+            <div class="kv"><span class="k">Verification</span><span class="v">queued</span></div>
+          </div>
+          <div class="panel-section">
+            <h4 class="panel-title">Files changed</h4>
+            <div class="kv"><span class="k">added</span><span class="v">3</span></div>
+            <div class="kv"><span class="k">modified</span><span class="v">5</span></div>
+            <div class="kv"><span class="k">removed</span><span class="v">1</span></div>
+          </div>
+        </aside>
+      </div>
+    </main>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════ WORKSPACE ══════════════════════════════════ -->
+<section class="screen" id="screen-workspace">
+  <div class="app">
+    <nav class="rail">
+      <div class="rail-logo"></div>
+      <button class="rail-btn" title="Build">✦</button>
+      <button class="rail-btn" title="Discover">◈</button>
+      <button class="rail-btn is-active" title="Apps">▤</button>
+      <button class="rail-btn" title="Chat">✉</button>
+      <div class="rail-spacer"></div>
+      <button class="rail-btn" title="Settings">⚙</button>
+      <div class="avatar">A</div>
+    </nav>
+
+    <main class="main">
+      <div class="topbar">
+        <div class="crumb"><span>Apps</span><span class="sep">/</span><strong>Todo list</strong></div>
+        <div class="spacer"></div>
+        <div class="chip"><span class="dot"></span> synced</div>
+        <button class="btn sm">⌘K</button>
+        <button class="btn primary sm">Deploy</button>
+      </div>
+
+      <div class="ws">
+        <div class="ws-left">
+          <div class="tree">
+            <div class="node dir">▾ src</div>
+            <div class="node child">app.tsx</div>
+            <div class="node child active">TodoList.tsx</div>
+            <div class="node child">DueDate.tsx</div>
+            <div class="node child">store.ts</div>
+            <div class="node dir">▸ components</div>
+            <div class="node dir">▸ lib</div>
+            <div class="node dir">▸ public</div>
+            <div class="node">package.json</div>
+            <div class="node">wrangler.jsonc</div>
+          </div>
+        </div>
+
+        <div class="ws-editor">
+          <div class="editor-head">
+            <span>src/TodoList.tsx</span>
+            <span class="spacer" style="flex:1"></span>
+            <span>TypeScript</span><span>·</span><span>utf-8</span>
+          </div>
+          <div class="editor-body">
+            <div class="ln"><span class="n">1</span><span><span class="k">import</span> { useState } <span class="k">from</span> <span class="s">'react'</span>;</span></div>
+            <div class="ln"><span class="n">2</span><span><span class="k">import</span> { Todo, type Todo as T } <span class="k">from</span> <span class="s">'./store'</span>;</span></div>
+            <div class="ln"><span class="n">3</span><span></span></div>
+            <div class="ln"><span class="n">4</span><span><span class="k">export default function</span> <span class="f">TodoList</span>() {</span></div>
+            <div class="ln"><span class="n">5</span><span>  <span class="k">const</span> [todos, setTodos] = <span class="f">useState</span>&lt;Todo[]&gt;([]);</span></div>
+            <div class="ln"><span class="n">6</span><span></span></div>
+            <div class="ln"><span class="n">7</span><span>  <span class="k">return</span> (</span></div>
+            <div class="ln"><span class="n">8</span><span>    &lt;<span class="f">ul</span> <span class="f">className</span>=<span class="s">"todo-list"</span>&gt;</span></div>
+            <div class="ln"><span class="n">9</span><span>      {todos.<span class="f">map</span>((todo) =&gt; (</span></div>
+            <div class="ln"><span class="n">10</span><span>        &lt;<span class="f">TodoItem</span> <span class="f">key</span>={todo.id} <span class="f">todo</span>={todo} /&gt;</span></div>
+            <div class="ln"><span class="n">11</span><span>      ))}</span></div>
+            <div class="ln"><span class="n">12</span><span>    &lt;/<span class="f">ul</span>&gt;</span></div>
+            <div class="ln"><span class="n">13</span><span>  );</span></div>
+            <div class="ln"><span class="n">14</span><span>}</span></div>
+          </div>
+          <div class="statusbar">
+            <span>main*</span><span>↑2 ↓0</span><span class="spacer" style="flex:1"></span>
+            <span>Ln 5, Col 24</span><span>TS</span><span>UTF-8</span>
+          </div>
+        </div>
+
+        <div class="ws-preview">
+          <div class="preview-head">
+            <button class="tool">▣</button><button class="tool">↻</button>
+            <div class="urlbar">https://todo-list.app.prysm.sh</div>
+            <div class="chip"><span class="dot"></span> live</div>
+          </div>
+          <div class="mock-app">
+            <h4>Today</h4>
+            <div class="todo done"><span class="box"></span><span>Renew domain</span></div>
+            <div class="todo"><span class="box"></span><span>Ship the pricing page</span></div>
+            <div class="todo"><span class="box"></span><span>Book flights</span></div>
+            <h4 style="margin-top:20px">Upcoming</h4>
+            <div class="todo"><span class="box"></span><span>Quarterly review — due Friday</span></div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════ DISCOVER ══════════════════════════════════ -->
+<section class="screen" id="screen-discover">
+  <div class="app">
+    <nav class="rail">
+      <div class="rail-logo"></div>
+      <button class="rail-btn" title="Build">✦</button>
+      <button class="rail-btn is-active" title="Discover">◈</button>
+      <button class="rail-btn" title="Apps">▤</button>
+      <button class="rail-btn" title="Chat">✉</button>
+      <div class="rail-spacer"></div>
+      <button class="rail-btn" title="Settings">⚙</button>
+      <div class="avatar">A</div>
+    </nav>
+
+    <main class="main">
+      <div class="topbar">
+        <div class="crumb"><strong>Discover</strong></div>
+        <div class="spacer"></div>
+        <div class="chip">trending this week ▾</div>
+      </div>
+      <div class="page">
+        <div class="page-inner">
+          <div class="page-head">
+            <div>
+              <h1>Apps people shipped</h1>
+              <p>Clone any of these into your workspace and make it yours.</p>
+            </div>
+            <div class="spacer" style="flex:1"></div>
+            <button class="btn">Publish an app</button>
+          </div>
+
+          <div class="filters">
+            <span class="filter on">Trending</span>
+            <span class="filter">Newest</span>
+            <span class="filter">Productivity</span>
+            <span class="filter">Utilities</span>
+            <span class="filter">Games</span>
+            <span class="filter">Dashboards</span>
+          </div>
+
+          <div class="grid">
+            <div class="tile"><div class="shot"></div><div class="info"><h3>Habit streaks</h3><p>Daily check-in with a year of heatmap</p><div class="row"><div class="chip">GLM 4.6</div><span class="who"><span class="mini-av"></span> ali</span></div></div></div>
+            <div class="tile"><div class="shot"></div><div class="info"><h3>Split the bill</h3><p>Shared expenses with settle-up</p><div class="row"><div class="chip">GLM 4.6</div><span class="who"><span class="mini-av"></span> mia</span></div></div></div>
+            <div class="tile"><div class="shot"></div><div class="info"><h3>Plant tracker</h3><p>Watering schedule per pot</p><div class="row"><div class="chip">GLM 4.6</div><span class="who"><span class="mini-av"></span> jonas</span></div></div></div>
+            <div class="tile"><div class="shot"></div><div class="info"><h3>Recipe pantry</h3><p>What's in, what's out</p><div class="row"><div class="chip">GLM 4.6</div><span class="who"><span class="mini-av"></span> sara</span></div></div></div>
+            <div class="tile"><div class="shot"></div><div class="info"><h3>Reading list</h3><p>Highlights and quotes</p><div class="row"><div class="chip">GLM 4.6</div><span class="who"><span class="mini-av"></span> ken</span></div></div></div>
+            <div class="tile"><div class="shot"></div><div class="info"><h3>Shift planner</h3><p>Swap shifts with your team</p><div class="row"><div class="chip">GLM 4.6</div><span class="who"><span class="mini-av"></span> noa</span></div></div></div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════ SETTINGS ══════════════════════════════════ -->
+<section class="screen" id="screen-settings">
+  <div class="app">
+    <nav class="rail">
+      <div class="rail-logo"></div>
+      <button class="rail-btn" title="Build">✦</button>
+      <button class="rail-btn" title="Discover">◈</button>
+      <button class="rail-btn" title="Apps">▤</button>
+      <button class="rail-btn" title="Chat">✉</button>
+      <div class="rail-spacer"></div>
+      <button class="rail-btn is-active" title="Settings">⚙</button>
+      <div class="avatar">A</div>
+    </nav>
+
+    <main class="main">
+      <div class="topbar"><div class="crumb"><strong>Settings</strong></div></div>
+      <div class="settings">
+        <div class="settings-nav">
+          <button class="item on">Models</button>
+          <button class="item">Account</button>
+          <button class="item">Appearance</button>
+          <button class="item">API keys</button>
+          <button class="item">Domains</button>
+          <button class="item">Billing</button>
+          <button class="item">Sign out</button>
+        </div>
+        <div class="settings-body">
+          <div class="settings-inner">
+            <div class="group">
+              <h3>Models</h3>
+              <p class="desc">Which model writes your apps. Change it per session if you like.</p>
+
+              <div class="setting">
+                <div class="txt"><b>Default model</b><span>Used by the agent for blueprint, code and chat</span></div>
+                <div class="chip accent">GLM 4.6 ▾</div>
+              </div>
+
+              <div class="setting">
+                <div class="txt"><b>Fallback model</b><span>Takes over when the primary provider is unreachable</span></div>
+                <div class="chip">GPT-OSS 120B ▾</div>
+              </div>
+
+              <div class="setting">
+                <div class="txt"><b>Reasoning effort</b><span>Higher effort plans more carefully and costs more tokens</span></div>
+                <div class="chip">High ▾</div>
+              </div>
+            </div>
+
+            <div class="group">
+              <h3>Provider keys</h3>
+              <p class="desc">Stored encrypted and never shipped to the browser.</p>
+              <div class="field">
+                <span class="chip accent">Zhipu</span>
+                <input value="••••••••••••••••••••••••••••" readonly />
+                <button class="btn sm">Replace</button>
+              </div>
+              <div class="field">
+                <span class="chip">Cloudflare</span>
+                <input value="••••••••••••••••••••••••••••" readonly />
+                <button class="btn sm">Replace</button>
+              </div>
+              <div class="field">
+                <span class="chip">OpenRouter</span>
+                <input placeholder="sk-or-v1-…" />
+                <button class="btn sm">Add</button>
+              </div>
+            </div>
+
+            <div class="group">
+              <h3>Behaviour</h3>
+              <p class="desc">How the agent works while it builds.</p>
+              <div class="setting">
+                <div class="txt"><b>Auto-deploy preview</b><span>Publish every passing build to your preview origin</span></div>
+                <div class="switch on"><i></i></div>
+              </div>
+              <div class="setting">
+                <div class="txt"><b>Repair loop</b><span>Let the agent fix failing tests without asking</span></div>
+                <div class="switch on"><i></i></div>
+              </div>
+              <div class="setting">
+                <div class="txt"><b>Email on deploy</b><span>Send a note when an app goes live</span></div>
+                <div class="switch"><i></i></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</section>
+
+<script>
+  const tabs = document.getElementById('tabs');
+  tabs.addEventListener('click', (event) => {
+    const button = event.target.closest('button[data-screen]');
+    if (!button) return;
+    for (const b of tabs.querySelectorAll('button')) b.setAttribute('aria-pressed', String(b === button));
+    for (const section of document.querySelectorAll('.screen')) section.classList.toggle('is-active', section.id === `screen-${button.dataset.screen}`);
+  });
+  document.getElementById('themeBtn').addEventListener('click', () => {
+    const root = document.documentElement;
+    root.dataset.theme = root.dataset.theme === 'dark' ? 'light' : 'dark';
+  });
+</script>
+</body>
+</html>

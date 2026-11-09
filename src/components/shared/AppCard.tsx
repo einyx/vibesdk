@@ -423,10 +423,10 @@ export const AppCard = React.memo<AppCardProps>(
 				>
 					<article
 						className={cn(
-							'relative flex h-full flex-col overflow-hidden rounded-2xl',
+							'relative flex h-full flex-col overflow-hidden rounded-lg',
 							'bg-kumo-base ring-1 ring-kumo-line/80',
-							'shadow-[0_1px_2px_rgba(0,0,0,0.04)]',
-							'hover:shadow-[0_12px_40px_-12px_rgba(0,0,0,0.18)]',
+							'transition-transform duration-200',
+							'hover:-translate-y-0.5 hover:shadow-[0_12px_40px_-16px_rgba(0,0,0,0.45)]',
 							'hover:ring-kumo-line',
 							'focus-visible:ring-2 focus-visible:ring-kumo-brand/40',
 						)}
@@ -493,7 +493,7 @@ export const AppCard = React.memo<AppCardProps>(
 
 							{isDeploying && (
 								<div
-									className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-kumo-base/90 px-2 py-1 text-xs font-medium text-kumo-success shadow-sm ring-1 ring-kumo-success/20 backdrop-blur-md"
+									className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded bg-kumo-base/90 px-1.5 py-0.5 font-mono text-[10.5px] font-medium uppercase tracking-[0.08em] text-kumo-success ring-1 ring-kumo-success/20 backdrop-blur-md"
 									title="App is deploying"
 									aria-label="App deployment in progress"
 								>
@@ -504,7 +504,7 @@ export const AppCard = React.memo<AppCardProps>(
 
 							{isFailed && (
 								<div
-									className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-kumo-base/90 px-2 py-1 text-xs font-medium text-kumo-subtle shadow-sm ring-1 ring-kumo-line backdrop-blur-md"
+									className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded bg-kumo-base/90 px-1.5 py-0.5 font-mono text-[10.5px] font-medium uppercase tracking-[0.08em] text-kumo-subtle ring-1 ring-kumo-line backdrop-blur-md"
 									title="Deployment failed"
 									aria-label="App deployment failed"
 								>

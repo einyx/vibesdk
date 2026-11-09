@@ -370,9 +370,14 @@ export default function AppView() {
 			}
 		} catch (error) {
 			console.error('Error starting deployment:', error);
-			setDeploymentProgress('Failed to start deployment');
+			const message =
+				error instanceof Error
+					? error.message
+					: 'Failed to start deployment';
+			setDeploymentProgress(message);
 			toast.add({
-				title: 'Failed to start deployment',
+				title: 'Deployment failed',
+				description: message,
 				variant: 'error',
 			});
 		}
@@ -402,9 +407,14 @@ export default function AppView() {
 			})
 			.catch((error) => {
 				console.error('Error loading Think preview:', error);
-				setDeploymentProgress('Failed to load preview');
+				// The server explains what is missing (previews need a paid
+				// runtime); show that instead of a bare failure.
+				const message =
+					error instanceof Error ? error.message : 'Failed to load preview';
+				setDeploymentProgress(message);
 				toast.add({
-					title: 'Failed to load preview',
+					title: 'Preview unavailable',
+					description: message,
 					variant: 'error',
 				});
 			});

@@ -149,7 +149,7 @@ function AnimatedStatusIndicator({ status, size = 5 }: AnimatedStatusIndicatorPr
 						transition={commonTransitions.smoothInOut}
 						className={cn(sizeClass, 'flex items-center justify-center')}
 					>
-						<div className="size-2 rounded-full bg-brand" />
+						<div className="size-2 rounded-full bg-kumo-brand" />
 					</motion.div>
 				)}
 				{status === 'error' && (
@@ -524,7 +524,7 @@ export function PhaseTimeline({
                                 </div>
                                 {collapsedBarInfo.badge && (
                                     <div className="flex-shrink-0">
-                                        <span className="text-xs font-medium px-2 py-0.5 bg-brand/10 text-kumo-brand rounded-full">
+                                        <span className="rounded bg-brand/10 px-1.5 py-0.5 font-mono text-[10.5px] font-medium uppercase tracking-[0.08em] text-kumo-brand">
                                             {collapsedBarInfo.badge}
                                         </span>
                                     </div>
@@ -536,7 +536,7 @@ export function PhaseTimeline({
                                             handleDeployToCloudflare(chatId);
                                         }}
                                         disabled={!!isDeploying}
-                                        className="ml-2 flex items-center gap-1.5 px-2.5 py-1 bg-brand hover:bg-brand/90 disabled:bg-brand/50 text-white rounded-full text-xs font-medium transition-colors disabled:cursor-not-allowed"
+                                        className="ml-2 flex items-center gap-1.5 rounded-md bg-kumo-brand px-2.5 py-1 text-xs font-medium text-white transition-colors hover:bg-kumo-brand-hover disabled:opacity-50 disabled:cursor-not-allowed"
                                         title={isDeploying ? 'Deploying...' : 'Deploy to Cloudflare'}
                                         aria-label={isDeploying ? 'Deploying' : 'Deploy to Cloudflare'}
                                     >
@@ -626,7 +626,7 @@ export function PhaseTimeline({
 															handleDeployToCloudflare(chatId);
 														}}
 														disabled={isDeploying}
-														className="flex items-center gap-1.5 px-3 py-1.5 bg-brand hover:bg-brand/90 disabled:bg-brand/50 text-white rounded-lg text-xs font-medium transition-colors disabled:cursor-not-allowed"
+														className="flex items-center gap-1.5 rounded-md bg-kumo-brand px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-kumo-brand-hover disabled:opacity-50 disabled:cursor-not-allowed"
 													>
 														{isDeploying ? (
 															<StatusLoader size="sm" color="brand" />

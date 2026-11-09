@@ -55,6 +55,7 @@ interface AuthContextType {
 		google: boolean;
 		github: boolean;
 		cloudflare: boolean;
+		logto: boolean;
 		email: boolean;
 	} | null;
 	hasOAuth: boolean;
@@ -62,7 +63,7 @@ interface AuthContextType {
 
 	// OAuth login method with redirect support
 	login: (
-		provider: 'google' | 'github' | 'cloudflare',
+		provider: 'google' | 'github' | 'cloudflare' | 'logto',
 		redirectUrl?: string,
 	) => void;
 
@@ -100,6 +101,7 @@ const DEFAULT_AUTH_PROVIDERS: AuthProvidersResponseData = {
 		google: false,
 		github: false,
 		cloudflare: false,
+		logto: false,
 		email: true,
 	},
 	hasOAuth: false,
@@ -284,7 +286,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 	// OAuth login method with redirect support
 	const login = useCallback(
 		(
-			provider: 'google' | 'github' | 'cloudflare',
+			provider: 'google' | 'github' | 'cloudflare' | 'logto',
 			redirectUrl?: string,
 		) => {
 			const intendedUrl =

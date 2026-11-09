@@ -27,7 +27,7 @@ interface LoginModalProps {
 	onClose: () => void;
 
 	// Original OAuth-only interface (for backward compatibility)
-	onLogin: (provider: 'google' | 'github' | 'cloudflare') => void;
+	onLogin: (provider: 'google' | 'github' | 'cloudflare' | 'logto') => void;
 
 	// New enhanced interfaces (optional)
 	onEmailLogin?: (credentials: {
@@ -35,7 +35,7 @@ interface LoginModalProps {
 		password: string;
 	}) => Promise<void>;
 	onOAuthLogin?: (
-		provider: 'google' | 'github' | 'cloudflare',
+		provider: 'google' | 'github' | 'cloudflare' | 'logto',
 		redirectUrl?: string,
 	) => void;
 	onRegister?: (data: {
@@ -90,6 +90,7 @@ export function LoginModal({
 	const showGitHub = authProviders?.github && hasOAuth;
 	const showGoogle = authProviders?.google && hasOAuth;
 	const showCloudflare = authProviders?.cloudflare && hasOAuth;
+	const showLogto = authProviders?.logto && hasOAuth;
 
 	const resetForm = () => {
 		setEmail('');
@@ -183,7 +184,7 @@ export function LoginModal({
 		}
 	};
 
-	const handleOAuthClick = (provider: 'google' | 'github' | 'cloudflare') => {
+	const handleOAuthClick = (provider: 'google' | 'github' | 'cloudflare' | 'logto') => {
 		// Use the new interface if available, otherwise fall back to original
 		if (onOAuthLogin) {
 			// Pass the current URL as redirect URL for context preservation
@@ -324,6 +325,29 @@ export function LoginModal({
 						</Button>
 					)}
 
+					{/* Logto (Verity / prysm.sh) */}
+					{showLogto && (
+						<Button
+							type="button"
+							variant="secondary"
+							className="w-full justify-center"
+							onClick={() => handleOAuthClick('logto')}
+							icon={
+								<svg
+									className="h-5 w-5"
+									fill="none"
+									viewBox="0 0 32 32"
+									stroke="currentColor"
+									strokeWidth={2.5}
+								>
+									<path d="M4 26 16 5l12 21H4Zm12-21v21M4 26l18-10" />
+								</svg>
+							}
+						>
+							Continue with prysm.sh
+						</Button>
+					)}
+
 					{/* Cloudflare */}
 					{showCloudflare && (
 						<Button
@@ -404,6 +428,7 @@ export function LoginModal({
 									disabled={isLoading}
 								>
 									<InputGroup.Input
+										aria-label="Password"
 										type={
 											showPassword ? 'text' : 'password'
 										}

@@ -135,7 +135,7 @@ export function PromptBox({
 
 	const isCompact = variant === 'compact';
 	const maxHeight = isCompact ? 120 : 300;
-	const borderRadius = isCompact ? 12 : 18;
+	const borderRadius = isCompact ? 8 : 10;
 
 	const autoResize = (el: HTMLTextAreaElement) => {
 		el.style.height = '0px';
@@ -158,7 +158,7 @@ export function PromptBox({
 					limitsData={limitsData}
 					onConnectCloudflare={onConnectCloudflare}
 				>
-					<div className="min-h-10 rounded-xl transition-all duration-200 bg-bg-4 dark:bg-kumo-elevated border box-border">
+					<div className="min-h-10 rounded-md transition-all duration-200 bg-kumo-base border border-kumo-hairline">
 						<form ref={formRef} onSubmit={handleSubmit}>
 							<div className="relative flex min-h-10 items-center">
 								{dragOverlay}
@@ -181,7 +181,7 @@ export function PromptBox({
 									disabled={disabled}
 									placeholder={resolvedPlaceholder}
 									rows={1}
-									className="w-full bg-transparent rounded-xl px-3 pr-20 py-3 text-sm leading-5 ring-0 outline-none text-text-primary placeholder:text-text-primary/50! disabled:opacity-50 disabled:cursor-not-allowed resize-none overflow-y-auto no-scrollbar min-h-10 max-h-[120px] group"
+									className="w-full bg-transparent px-3 pr-20 py-3 text-sm leading-5 ring-0 outline-none text-kumo-default placeholder:text-kumo-subtle! disabled:opacity-50 disabled:cursor-not-allowed resize-none overflow-y-auto no-scrollbar min-h-10 max-h-[120px] group"
 									style={{
 										height: '40px',
 										minHeight: '40px',
@@ -230,7 +230,7 @@ export function PromptBox({
 			radius={borderRadius}
 		>
 			<div
-				className="w-full rounded-[18px] bg-bg-4 dark:bg-kumo-elevated cursor-text border transition-all duration-200 shadow-sm"
+				className="w-full cursor-text rounded-lg border border-kumo-hairline bg-kumo-base transition-all duration-200"
 				onClick={(e) => {
 					const target = e.target as HTMLElement;
 					if (
@@ -246,7 +246,7 @@ export function PromptBox({
 				<form
 					ref={formRef}
 					onSubmit={handleSubmit}
-					className="flex z-10 flex-col w-full min-h-[136px] bg-bg-4 ring-0 dark:bg-kumo-elevated rounded-[18px] p-4 transition-all duration-200"
+					className="flex z-10 flex-col w-full min-h-[136px] rounded-lg bg-kumo-base ring-0 p-4 transition-all duration-200"
 				>
 					<div
 						className={cn(

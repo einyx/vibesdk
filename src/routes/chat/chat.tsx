@@ -358,6 +358,28 @@ function ChatSession() {
 	const userAccountDeployEnabled = capabilities?.userAccountDeploy ?? false;
 
 	const headerTitle = blueprint?.title || appTitle;
+
+	// The topbar is the app's context line: who we are building, and what is
+	// running right now.
+	usePageHeader({
+		leading: (
+			<span className="flex min-w-0 items-center gap-2">
+				<span className="truncate text-sm font-medium">
+					{headerTitle ?? 'New app'}
+				</span>
+			</span>
+		),
+		trailing: (
+			<span className="flex items-center gap-3">
+				{isGenerating || isGeneratingBlueprint ? (
+					<span className="flex items-center gap-1.5 text-xs text-kumo-subtle">
+						<span className="size-1.5 animate-pulse rounded-full bg-kumo-success" />
+						running
+					</span>
+				) : null}
+			</span>
+		),
+	});
 	const showHeader = Boolean(
 		headerTitle || chatId || appLoading || app?.visibility,
 	);

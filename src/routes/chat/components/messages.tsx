@@ -32,7 +32,7 @@ export function UserMessage({ message }: { message: string }) {
 	return (
 		<div className="flex flex-col gap-2 min-w-0">
 			<div className="flex items-center gap-2 mb-3">
-				<div className="size-5 flex items-center justify-center rounded-full bg-brand text-white shrink-0">
+				<div className="flex size-5 shrink-0 items-center justify-center rounded-full bg-kumo-fill text-kumo-subtle">
 					<span className="text-[10px]">U</span>
 				</div>
 				<div className="font-medium text-text-50">You</div>
@@ -859,10 +859,12 @@ export function AIMessage({
 
 	return (
 		<div className="flex flex-col gap-2 min-w-0">
-			<div className="font-mono font-medium text-text-50 flex items-center gap-2 mb-3">
-				<AIAvatar className="size-5 text-orange-500 shrink-0" />
-				Orange
-				{isThinking && <Sparkles className="size-3 text-orange-400 animate-pulse" />}
+			<div className="mb-3 flex items-center gap-2 font-mono text-[11px] font-medium uppercase tracking-[0.1em] text-kumo-subtle">
+				<AIAvatar className="size-4 shrink-0 text-kumo-brand" />
+				prysm build
+				{isThinking ? (
+					<Sparkles className="size-3 animate-pulse text-kumo-brand" />
+				) : null}
 			</div>
 			<div className={cn(isThinking && 'animate-pulse')}>
 				<AssistantParts parts={resolvedParts} streaming={!!isThinking} />

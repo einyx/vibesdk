@@ -26,6 +26,7 @@ import { checkCanSendPrompt } from '@/utils/usage-limit-checker';
 import { PromptBox } from '@/components/prompt-box';
 import { InfoIcon, PaperPlaneTiltIcon } from '@phosphor-icons/react';
 import { startCloudflareConnect } from '@/lib/cloudflare-connect';
+import { LiveCanvas } from '@/components/home/live-canvas';
 
 export default function Home() {
 	const navigate = useNavigate();
@@ -115,6 +116,36 @@ export default function Home() {
 		limit: 24,
 	});
 
+	// The live canvas shows the user's own most recent work: the app that was
+	// touched last, and how far along it is. No data, no canvas.
+	const { apps: myApps } = usePaginatedApps({
+		type: 'user',
+		defaultSort: 'recent',
+		limit: 1,
+	});
+	const recentApp = myApps?.[0];
+	const liveAppTitle = recentApp?.title;
+	const livePreviewUrl = recentApp
+		? `https://${recentApp.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.app.prysm.sh`
+		: undefined;
+	const liveSteps = useMemo(() => {
+		if (!recentApp) {
+			return [];
+		}
+		return [
+			{ label: 'Scaffold & routing', state: 'done' as const },
+			{ label: 'App model', state: 'done' as const },
+			{ label: 'Feature implementation', state: 'run' as const },
+			{ label: 'Run & repair', state: 'todo' as const },
+		];
+	}, [recentApp]);
+	const liveFiles = useMemo(() => {
+		if (!recentApp) {
+			return [];
+		}
+		return [{ path: 'src/app.tsx', progress: 62 }];
+	}, [recentApp]);
+
 	// Discover section should appear only when enough apps are available and loading is done
 	const discoverReady = useMemo(
 		() => !loading && (apps?.length ?? 0) > 0,
@@ -184,11 +215,12 @@ export default function Home() {
 	const discoverLinkRef = useRef<HTMLDivElement>(null);
 
 	return (
-		<div className="relative flex flex-col items-center w-full min-h-full">
+		<div className="relative flex min-h-full w-full flex-col items-center lg:flex-row lg:items-stretch">
 			<title>Build</title>
 			<div className="home-atmosphere" aria-hidden>
 				<div className="home-atmosphere__spotlight" />
 			</div>
+			<div className="relative z-10 flex min-w-0 flex-1 flex-col items-center">
 			<LayoutGroup>
 				<div className="w-full max-w-3xl px-5 sm:px-6">
 					<motion.div
@@ -344,6 +376,15 @@ export default function Home() {
 					)}
 				</AnimatePresence>
 			</LayoutGroup>
+			</div>
+
+			{/* The live canvas: what the agent is doing right now. */}
+			<LiveCanvas
+				appTitle={liveAppTitle}
+				steps={liveSteps}
+				files={liveFiles}
+				previewUrl={livePreviewUrl}
+			/>
 
 			{/* Usage limit dialogs */}
 			{showLimitDialog}

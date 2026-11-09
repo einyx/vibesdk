@@ -1,0 +1,1047 @@
+<!doctype html>
+<html lang="en" data-theme="dark" data-density="comfortable">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>prysm build — UI redesign v5</title>
+<style>
+  /* ═══ tokens ═══ */
+  :root {
+    --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --font-mono: 'DM Mono', ui-monospace, 'SF Mono', 'Cascadia Code', Menlo, monospace;
+    --r-xs: 3px; --r-sm: 4px; --r-md: 6px; --r-lg: 8px; --r-xl: 10px; --r-full: 999px;
+    --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 24px; --sp-6: 32px; --sp-7: 48px; --sp-8: 64px; --sp-9: 96px;
+    --fs-base: 14px; --fs-sm: 12.5px; --fs-xs: 11.5px; --fs-lg: 15.5px; --fs-hero: 40px;
+    --lh: 1.5; --row-h: 34px;
+    --dur-1: 120ms; --dur-2: 220ms; --dur-3: 420ms; --ease: cubic-bezier(.2,.8,.2,1);
+  }
+  [data-density="compact"] {
+    --sp-1: 3px; --sp-2: 6px; --sp-3: 9px; --sp-4: 12px; --sp-5: 16px; --sp-6: 24px;
+    --sp-7: 32px; --sp-8: 40px; --sp-9: 56px;
+    --fs-base: 13px; --fs-sm: 11.5px; --fs-xs: 10.5px; --fs-lg: 14.5px; --fs-hero: 34px;
+    --row-h: 28px;
+  }
+  /* Prysm brand system (stacks/verity/prysm-landing/brand): warm canvas, ink, terracotta mark. */
+  [data-theme="dark"] {
+    --bg-0:#211d1a; --bg-1:#2b2622; --bg-2:#322d29; --bg-3:#383330; --bg-4:#423c38;
+    --line-1:#3f3a36; --line-2:#4d4741;
+    --tx-1:#f7f5f0; --tx-2:#c9c0ad; --tx-3:#aea69c;
+    --mark:#e0705a; --accent:#e0705a; --accent-2:#f0a189; --accent-soft:rgba(224,112,90,.14);
+    --ok:#9fc98a; --warn:#d9b36a; --err:#e07a6a; --info:#8fb8c9;
+    --spectrum: linear-gradient(90deg,#e0705a,#e0a06a,#d9c07a,#9fc98a,#8fb8c9,#a89ac9,#d98fb0);
+    --shadow-1: 0 1px 2px rgba(0,0,0,.28); --shadow-2: 0 12px 32px -10px rgba(0,0,0,.5);
+    --shadow-3: 0 32px 80px -28px rgba(0,0,0,.65);
+    --code-bg:#1d1917;
+  }
+  [data-theme="light"] {
+    --bg-0:#f7f5f0; --bg-1:#efece5; --bg-2:#fffdfa; --bg-3:#f7f5f0; --bg-4:#e9e5dd;
+    --line-1:#ded9d0; --line-2:#cfc9be;
+    --tx-1:#221f1c; --tx-2:#5c554c; --tx-3:#8b8378;
+    --mark:#a8482f; --accent:#a8482f; --accent-2:#8a3b26; --accent-soft:rgba(168,72,47,.10);
+    --ok:#5c7f4a; --warn:#8a6a26; --err:#a83f2c; --info:#4b6f80;
+    --spectrum: linear-gradient(90deg,#a8482f,#b06a3f,#8a6a26,#5c7f4a,#4b6f80,#6f5f8f,#8a4a6a);
+    --shadow-1: 0 1px 2px rgba(34,31,28,.06); --shadow-2: 0 12px 32px -14px rgba(34,31,28,.22);
+    --shadow-3: 0 32px 80px -30px rgba(34,31,28,.28);
+    --code-bg:#f2efe9;
+  }
+  * { box-sizing:border-box; }
+  html,body { margin:0; padding:0; }
+  body { background:var(--bg-0); color:var(--tx-1); font-family:var(--font-sans); font-size:var(--fs-base); line-height:var(--lh); -webkit-font-smoothing:antialiased; letter-spacing:-.011em; }
+  button { font:inherit; color:inherit; }
+  .spacer { flex:1; }
+
+  /* ═══ mockup chrome ═══ */
+  .sheet-bar { position:sticky; top:0; z-index:99; display:flex; align-items:center; gap:var(--sp-3); padding:10px 14px;
+    background:color-mix(in srgb, var(--bg-0) 90%, transparent); backdrop-filter:blur(14px); border-bottom:1px solid var(--line-1); flex-wrap:wrap; }
+  .sheet-brand { display:flex; align-items:center; gap:9px; font-weight:620; letter-spacing:-.02em; }
+  .sheet-brand .mark { width:18px; height:18px; color:var(--mark); }
+  .wordmark { height:17px; width:auto; color:var(--tx-1); display:block; }
+  .sheet-tabs { display:flex; gap:4px; flex-wrap:wrap; }
+  .sheet-tabs button { padding:6px 11px; border-radius:8px; border:1px solid transparent; background:transparent;
+    color:var(--tx-3); font-size:12px; font-weight:560; cursor:pointer; transition:all var(--dur-1) var(--ease); }
+  .sheet-tabs button:hover { color:var(--tx-1); background:var(--bg-3); }
+  .sheet-tabs button[aria-pressed="true"] { background:var(--accent-soft); color:var(--tx-1); }
+  .sheet-ctl { margin-left:auto; display:flex; gap:6px; }
+  .sheet-ctl button { padding:5px 10px; border-radius:8px; border:1px solid var(--line-1); background:var(--bg-2); color:var(--tx-2); font-size:12px; cursor:pointer; }
+  .screen { display:none; } .screen.is-active { display:block; }
+
+  /* ═══ app shell ═══ */
+  .app { display:grid; grid-template-columns:68px 1fr; height:calc(100vh - 55px); overflow:hidden; }
+  .rail { display:flex; flex-direction:column; align-items:center; gap:var(--sp-2); padding:var(--sp-4) 0; background:var(--bg-1); border-right:1px solid var(--line-1); }
+  .rail-logo { width:34px; height:34px; margin-bottom:var(--sp-4); display:grid; place-items:center; color:var(--mark); }
+  .rail-logo .mark { width:24px; height:24px; }
+  .rail-btn { width:38px; height:38px; border-radius:var(--r-md); display:grid; place-items:center; cursor:pointer; color:var(--tx-3);
+    border:1px solid transparent; background:transparent; transition:all var(--dur-1) var(--ease); position:relative; font-size:15px; }
+  .rail-btn:hover { color:var(--tx-1); background:var(--bg-3); }
+  .rail-btn.is-active { color:var(--tx-1); background:var(--bg-3); border-color:var(--line-1); }
+  .rail-btn.is-active::before { content:''; position:absolute; left:-15px; top:50%; translate:0 -50%; width:3px; height:18px; border-radius:0 3px 3px 0; background:var(--spectrum); }
+  .rail-spacer { flex:1; }
+  .avatar { width:32px; height:32px; border-radius:var(--r-full); background:linear-gradient(135deg,var(--accent),var(--accent-2));
+    display:grid; place-items:center; font-size:11.5px; font-weight:700; color:#fff; }
+  .dot { width:7px; height:7px; border-radius:50%; background:var(--ok); flex:none; }
+  .dot.pulse { animation:pulse 1.6s var(--ease) infinite; }
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.45;transform:scale(.82)} }
+
+  .main { display:flex; flex-direction:column; min-width:0; background:var(--bg-0); }
+  /* Topbar v4: a floating glass strip — no hard rule, view tabs instead of a breadcrumb,
+     icon actions instead of pill soup. */
+  .topbar { position:relative; z-index:20; display:flex; align-items:center; gap:var(--sp-3); height:52px; padding:0 var(--sp-5);
+    background:color-mix(in srgb, var(--bg-0) 72%, transparent); backdrop-filter:blur(18px) saturate(1.35); }
+  .topbar::after { content:''; position:absolute; left:var(--sp-5); right:var(--sp-5); bottom:0; height:1px;
+    background:linear-gradient(90deg, transparent, var(--line-1) 10%, var(--line-1) 90%, transparent); }
+  .app-name { display:flex; align-items:center; gap:9px; font-weight:580; letter-spacing:-.015em; font-size:var(--fs-base); }
+  .app-name .mark { width:19px; height:19px; flex:none; color:var(--mark); }
+  .viewtabs { display:flex; align-items:center; gap:var(--sp-4); margin-left:var(--sp-4); }
+  .viewtabs button { padding:16px 1px; margin-bottom:-1px; background:none; border:none; cursor:pointer;
+    color:var(--tx-3); font-size:var(--fs-sm); font-weight:540; border-bottom:2px solid transparent; transition:color var(--dur-1) var(--ease); }
+  .viewtabs button:hover { color:var(--tx-1); }
+  .viewtabs button.on { color:var(--tx-1); border-bottom-color:var(--accent); }
+  .icon-btn { width:32px; height:32px; border-radius:8px; display:grid; place-items:center; cursor:pointer;
+    color:var(--tx-2); background:transparent; border:1px solid transparent; transition:all var(--dur-1) var(--ease); }
+  .icon-btn:hover { color:var(--tx-1); background:var(--bg-3); border-color:var(--line-1); }
+  /* Meta system: text, not pills. A pill is reserved for controls. */
+  .meta { font-size:var(--fs-xs); color:var(--tx-3); font-weight:540; white-space:nowrap; }
+  .meta.mono { font-family:var(--font-mono); }
+  .status { display:inline-flex; align-items:center; gap:6px; font-size:var(--fs-xs); color:var(--tx-2); font-weight:540; white-space:nowrap; }
+  .status.ok { color:var(--ok); } .status.warn { color:var(--warn); } .status.err { color:var(--err); }
+  .status.info { color:var(--info); }
+  .picker { display:inline-flex; align-items:center; gap:6px; padding:5px 9px; border-radius:8px; cursor:pointer;
+    background:transparent; border:1px solid transparent; color:var(--tx-1); font-size:var(--fs-xs); font-weight:560;
+    transition:all var(--dur-1) var(--ease); }
+  .picker:hover { background:var(--bg-3); border-color:var(--line-1); }
+  .picker .caret { color:var(--tx-3); font-size:10px; }
+  .tag { font-family:var(--font-mono); font-size:10.5px; padding:2px 7px; border-radius:6px; background:var(--bg-4); color:var(--tx-2); }
+  .tag.on { background:var(--accent-soft); color:var(--accent-2); }
+  .crumb { display:flex; align-items:center; gap:var(--sp-2); color:var(--tx-3); font-size:var(--fs-sm); }
+  .crumb strong { color:var(--tx-1); font-weight:580; }
+  .sep { color:var(--line-2); }
+  .chip { display:inline-flex; align-items:center; gap:6px; padding:4px 9px; border-radius:8px; background:var(--bg-3);
+    color:var(--tx-2); font-size:var(--fs-xs); font-weight:540; white-space:nowrap; }
+  .chip.accent { color:var(--accent-2); background:var(--accent-soft); }
+  .chip.ok { color:var(--ok); background:color-mix(in srgb,var(--ok) 12%,transparent); }
+  .chip.err { color:var(--err); background:color-mix(in srgb,var(--err) 12%,transparent); }
+  .chip.warn { color:var(--warn); background:color-mix(in srgb,var(--warn) 12%,transparent); }
+  .btn { display:inline-flex; align-items:center; gap:8px; padding:8px 14px; border-radius:var(--r-sm); border:1px solid var(--line-1);
+    background:var(--bg-3); color:var(--tx-1); font-size:var(--fs-sm); font-weight:560; cursor:pointer; transition:all var(--dur-1) var(--ease); }
+  .btn:hover { border-color:var(--line-2); background:var(--bg-4); }
+  .btn.primary { background:var(--accent); border-color:transparent; color:#fff; box-shadow:0 6px 18px -8px var(--accent); }
+  .btn.primary:hover { filter:brightness(1.08); }
+  .btn.ghost { background:transparent; }
+  .btn.sm { padding:5px 10px; font-size:var(--fs-xs); }
+  .btn.danger { color:var(--err); border-color:color-mix(in srgb,var(--err) 30%,transparent); background:transparent; }
+
+  .mono { font-family:var(--font-mono); }
+  .micro { font-family:var(--font-mono); font-size:10.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--tx-3); }
+  .kbd { font-family:var(--font-mono); font-size:11px; padding:2px 6px; border-radius:5px; border:1px solid var(--line-1); background:var(--bg-3); color:var(--tx-2); }
+
+  /* ═══ home: prompt-first + live canvas ═══ */
+  .home { flex:1; overflow:auto; display:grid; grid-template-columns:minmax(0,1fr) 380px; }
+  .home-main { padding:var(--sp-8) var(--sp-7) var(--sp-9); display:flex; flex-direction:column; }
+  .home-main-inner { max-width:720px; width:100%; margin:0 auto; }
+  .eyebrow { display:inline-flex; align-items:center; gap:8px; font-family:var(--font-mono); font-size:var(--fs-xs);
+    letter-spacing:.08em; text-transform:uppercase; color:var(--tx-3); margin-bottom:var(--sp-4); }
+  .eyebrow .bar { width:26px; height:1px; background:var(--line-2); }
+  h1.title { font-size:var(--fs-hero); line-height:1.06; font-weight:660; letter-spacing:-.035em; margin:0 0 var(--sp-3); }
+  h1.title .grad { background:var(--spectrum); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .lede { color:var(--tx-2); font-size:var(--fs-lg); margin:0 0 var(--sp-6); }
+
+  .composer { background:var(--bg-2); border:1px solid var(--line-1); border-radius:var(--r-xl); box-shadow:var(--shadow-2); overflow:hidden; transition:border-color var(--dur-2) var(--ease); }
+  .composer:focus-within { border-color:color-mix(in srgb,var(--accent) 55%,var(--line-1)); }
+  .composer .body { padding:var(--sp-4); min-height:92px; font-size:var(--fs-lg); }
+  .composer .placeholder { color:var(--tx-3); }
+  .composer .footer { display:flex; align-items:center; gap:var(--sp-2); padding:var(--sp-2) var(--sp-3) var(--sp-3); }
+  .tool { width:30px; height:30px; border-radius:var(--r-sm); display:grid; place-items:center; color:var(--tx-3);
+    background:transparent; border:1px solid transparent; cursor:pointer; }
+  .tool:hover { color:var(--tx-1); background:var(--bg-4); }
+
+  .live-canvas { border-left:1px solid var(--line-1); background:var(--bg-1); padding:var(--sp-5); overflow:auto; }
+  .live-head { display:flex; align-items:center; gap:var(--sp-2); margin-bottom:var(--sp-4); }
+  .live-head .t { font-weight:600; font-size:var(--fs-sm); }
+  .live-card { background:var(--bg-2); border:1px solid var(--line-1); border-radius:var(--r-lg); padding:var(--sp-4); margin-bottom:var(--sp-4); }
+  .live-steps { display:flex; flex-direction:column; gap:2px; }
+  .lstep { display:flex; align-items:center; gap:9px; padding:6px 0; font-size:var(--fs-sm); }
+  .lstep .st { width:15px; height:15px; border-radius:50%; flex:none; display:grid; place-items:center; font-size:9px; }
+  .st.done { background:color-mix(in srgb,var(--ok) 20%,transparent); color:var(--ok); }
+  .st.run { background:var(--accent-soft); color:var(--accent-2); }
+  .st.todo { background:var(--bg-4); color:var(--tx-3); }
+  .st.fail { background:color-mix(in srgb,var(--err) 20%,transparent); color:var(--err); }
+  .lstep .lbl { flex:1; color:var(--tx-1); } .lstep .lbl.muted { color:var(--tx-3); }
+  .wave { display:inline-flex; gap:2px; align-items:flex-end; height:12px; }
+  .wave i { width:2px; background:var(--accent-2); border-radius:2px; animation:wv .9s var(--ease) infinite; }
+  .wave i:nth-child(1){height:5px;animation-delay:0s} .wave i:nth-child(2){height:11px;animation-delay:.12s}
+  .wave i:nth-child(3){height:7px;animation-delay:.24s} .wave i:nth-child(4){height:9px;animation-delay:.36s}
+  @keyframes wv { 0%,100%{transform:scaleY(.55)} 50%{transform:scaleY(1)} }
+
+  .recents { display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:var(--sp-3); }
+  .rec { background:var(--bg-2); border:1px solid var(--line-1); border-radius:var(--r-md); padding:var(--sp-3) var(--sp-4); cursor:pointer; transition:all var(--dur-2) var(--ease); }
+  .rec:hover { border-color:var(--line-2); transform:translateY(-1px); }
+  .rec b { display:block; font-size:var(--fs-sm); font-weight:580; }
+  .rec span { color:var(--tx-3); font-size:var(--fs-xs); }
+
+  /* ═══ chat ═══ */
+  .chat { display:grid; grid-template-columns:minmax(0,1fr) 320px; flex:1; min-height:0; }
+  .chat-main { display:flex; flex-direction:column; min-width:0; }
+  .thread { flex:1; overflow:auto; padding:var(--sp-6) 0 var(--sp-4); }
+  .thread-inner { max-width:800px; margin:0 auto; padding:0 var(--sp-6); display:flex; flex-direction:column; gap:var(--sp-5); }
+  .msg { display:flex; gap:var(--sp-3); }
+  .msg .who { width:27px; height:27px; border-radius:var(--r-sm); flex:none; display:grid; place-items:center; font-size:10.5px; font-weight:700; }
+  .msg.user .who { background:var(--bg-4); color:var(--tx-2); border:1px solid var(--line-1); }
+  .msg.agent .who { background:var(--bg-3); color:var(--mark); border:1px solid var(--line-1); }
+  .msg .bubble { min-width:0; flex:1; }
+  .msg.user .bubble { font-size:var(--fs-lg); font-weight:520; padding-top:3px; }
+  .msg .head { display:flex; align-items:center; gap:var(--sp-2); margin-bottom:6px; }
+  .msg .head .who-name { font-size:var(--fs-xs); font-weight:600; color:var(--tx-2); }
+
+  .panel { border:1px solid var(--line-1); border-radius:var(--r-md); background:var(--bg-2); overflow:hidden; margin-top:var(--sp-3); }
+  .panel-head { display:flex; align-items:center; gap:var(--sp-2); padding:9px var(--sp-3); border-bottom:1px solid var(--line-1); background:var(--bg-3); }
+  .panel-head .t { font-size:var(--fs-xs); font-weight:620; }
+  .panel-row { display:flex; align-items:center; gap:10px; padding:8px var(--sp-3); border-top:1px solid var(--line-1); font-size:var(--fs-sm); }
+  .panel-row:first-child { border-top:none; }
+  .panel-row .lbl { flex:1; }
+  .panel-row .lbl.muted { color:var(--tx-3); }
+
+  .fileprog { display:flex; align-items:center; gap:10px; padding:7px var(--sp-3); border-top:1px solid var(--line-1); font-family:var(--font-mono); font-size:var(--fs-xs); }
+  .fileprog .nm { flex:1; color:var(--tx-1); }
+  .fileprog .sz { color:var(--tx-3); }
+  .fileprog .bar { width:80px; height:4px; border-radius:var(--r-full); background:var(--bg-4); overflow:hidden; }
+  .fileprog .bar i { display:block; height:100%; background:var(--spectrum); }
+
+  .diff { font-family:var(--font-mono); font-size:var(--fs-xs); line-height:1.75; background:var(--code-bg); }
+  .diff .dh { display:flex; align-items:center; gap:8px; padding:6px var(--sp-3); border-bottom:1px solid var(--line-1); color:var(--tx-3); }
+  .diff .dl { display:flex; }
+  .diff .dl .ln { width:34px; text-align:right; padding-right:10px; color:var(--tx-3); user-select:none; }
+  .diff .dl .tx { white-space:pre; padding-right:14px; }
+  .diff .dl.add { background:color-mix(in srgb,var(--ok) 12%,transparent); }
+  .diff .dl.del { background:color-mix(in srgb,var(--err) 12%,transparent); }
+  .diff .dl.add .tx { color:var(--ok); } .diff .dl.del .tx { color:var(--err); }
+
+  .trace { border:1px solid var(--line-1); border-radius:var(--r-sm); background:var(--bg-1); margin-top:var(--sp-3); overflow:hidden; }
+  .trace-head { display:flex; align-items:center; gap:8px; padding:7px var(--sp-3); font-size:var(--fs-xs); color:var(--tx-3); cursor:pointer; }
+  .trace-head .tw { transition:transform var(--dur-2) var(--ease); }
+  .trace-body { padding:0 var(--sp-3) var(--sp-3); font-size:var(--fs-sm); color:var(--tx-2); font-style:italic; border-top:1px solid var(--line-1); padding-top:var(--sp-3); }
+  .trace.open .tw { transform:rotate(90deg); }
+
+  .actions { display:flex; gap:var(--sp-2); margin-top:var(--sp-3); flex-wrap:wrap; }
+  .err-card { border:1px solid color-mix(in srgb,var(--err) 40%,transparent); background:color-mix(in srgb,var(--err) 8%,var(--bg-2)); border-radius:var(--r-md); padding:var(--sp-3) var(--sp-4); margin-top:var(--sp-3); }
+  .err-card .ttl { display:flex; align-items:center; gap:8px; font-weight:600; font-size:var(--fs-sm); color:var(--err); margin-bottom:6px; }
+  .err-card .msg { font-size:var(--fs-sm); color:var(--tx-2); font-family:var(--font-mono); }
+  .composer-dock { border-top:1px solid var(--line-1); padding:var(--sp-3) var(--sp-6) var(--sp-4); background:linear-gradient(to top,var(--bg-0) 70%,transparent); }
+  .composer-dock .composer { box-shadow:none; border-radius:var(--r-lg); max-width:800px; margin:0 auto; }
+
+  .rail-panel { border-left:1px solid var(--line-1); background:var(--bg-1); display:flex; flex-direction:column; overflow:auto; }
+  .panel-section { padding:var(--sp-4); border-bottom:1px solid var(--line-1); }
+  .kv { display:flex; justify-content:space-between; gap:var(--sp-3); padding:5px 0; font-size:var(--fs-sm); }
+  .kv .k { color:var(--tx-3); } .kv .v { color:var(--tx-1); font-weight:540; text-align:right; }
+  .meter { height:5px; border-radius:var(--r-full); background:var(--bg-4); overflow:hidden; margin-top:6px; }
+  .meter i { display:block; height:100%; background:var(--spectrum); border-radius:inherit; }
+  .spectrum-rule { height:2px; border-radius:var(--r-full); background:var(--spectrum); opacity:.85; }
+
+  /* ═══ states gallery ═══ */
+  .gallery { padding:var(--sp-6) var(--sp-7); overflow:auto; }
+  .gallery-inner { max-width:1180px; margin:0 auto; }
+  .ggrid { display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:var(--sp-5); }
+  .gcard { border:1px solid var(--line-1); border-radius:var(--r-lg); background:var(--bg-2); overflow:hidden; }
+  .gcard .gh { padding:var(--sp-3) var(--sp-4); border-bottom:1px solid var(--line-1); background:var(--bg-3); display:flex; align-items:center; gap:8px; }
+  .gcard .gh b { font-size:var(--fs-sm); font-weight:620; }
+  .gcard .gb { padding:var(--sp-4); }
+  .skel { height:10px; border-radius:var(--r-full); background:linear-gradient(90deg,var(--bg-3),var(--bg-4),var(--bg-3)); background-size:200% 100%; animation:shimmer 1.4s linear infinite; }
+  @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+  .skel-row { display:flex; gap:10px; align-items:center; padding:8px 0; }
+  .pending { display:flex; align-items:center; gap:10px; font-size:var(--fs-sm); color:var(--tx-2); }
+  .empty { text-align:center; padding:var(--sp-7) var(--sp-4); color:var(--tx-3); }
+  .empty .glyph { width:44px; height:44px; margin:0 auto var(--sp-3); border-radius:var(--r-md); background:var(--bg-3); display:grid; place-items:center; font-size:19px; color:var(--tx-2); }
+
+  /* ═══ workspace ═══ */
+  .ws { display:grid; grid-template-columns:236px minmax(0,1fr) minmax(0,1fr); flex:1; min-height:0; }
+  .ws-left { border-right:1px solid var(--line-1); background:var(--bg-1); overflow:auto; padding:var(--sp-3); }
+  .tree { font-family:var(--font-mono); font-size:var(--fs-xs); }
+  .tree .node { display:flex; align-items:center; gap:6px; padding:4px 6px; border-radius:var(--r-xs); color:var(--tx-2); }
+  .tree .node.active { background:var(--bg-3); color:var(--tx-1); }
+  .tree .node.dir { color:var(--tx-3); }
+  .tree .node.child { padding-left:18px; }
+  .ws-editor { display:flex; flex-direction:column; min-width:0; }
+  .editor-head { display:flex; align-items:center; gap:var(--sp-2); padding:0 var(--sp-3); height:36px; border-bottom:1px solid var(--line-1);
+    font-family:var(--font-mono); font-size:var(--fs-xs); color:var(--tx-3); }
+  .editor-body { flex:1; padding:var(--sp-4); font-family:var(--font-mono); font-size:var(--fs-xs); line-height:1.8; overflow:auto; background:var(--code-bg); }
+  .ln { display:flex; gap:14px; }
+  .ln .n { color:var(--tx-3); width:26px; text-align:right; user-select:none; }
+  .k{color:#c792ea}.s{color:#c3e88d}.f{color:#82aaff}
+  .ws-preview { border-left:1px solid var(--line-1); display:flex; flex-direction:column; background:var(--bg-1); }
+  .preview-head { display:flex; align-items:center; gap:var(--sp-2); height:36px; padding:0 var(--sp-3); border-bottom:1px solid var(--line-1); }
+  .urlbar { flex:1; height:26px; border-radius:var(--r-full); background:var(--bg-3); border:1px solid var(--line-1); display:flex;
+    align-items:center; padding:0 10px; font-family:var(--font-mono); font-size:11px; color:var(--tx-3); }
+  .mock-app { flex:1; margin:var(--sp-4); background:var(--bg-2); border:1px solid var(--line-1); border-radius:var(--r-md); padding:var(--sp-5); overflow:auto; }
+  .mock-app h4 { margin:0 0 var(--sp-3); font-size:var(--fs-sm); }
+  .todo { display:flex; align-items:center; gap:10px; padding:9px 0; border-bottom:1px solid var(--line-1); font-size:var(--fs-sm); }
+  .todo .box { width:16px; height:16px; border-radius:5px; border:1.5px solid var(--line-2); flex:none; }
+  .todo.done .box { background:var(--accent); border-color:var(--accent); }
+  .todo.done span { color:var(--tx-3); text-decoration:line-through; }
+  .statusbar { display:flex; align-items:center; gap:var(--sp-4); height:26px; padding:0 var(--sp-3); border-top:1px solid var(--line-1);
+    background:var(--bg-1); font-family:var(--font-mono); font-size:11px; color:var(--tx-3); }
+
+  /* ═══ publish sheet ═══ */
+  .sheet-wrap { flex:1; display:grid; place-items:center; background:color-mix(in srgb,var(--bg-0) 72%,transparent); overflow:auto; padding:var(--sp-7); }
+  .sheet { width:100%; max-width:520px; background:var(--bg-2); border:1px solid var(--line-2); border-radius:var(--r-xl); box-shadow:var(--shadow-3); overflow:hidden; }
+  .sheet h2 { margin:0; font-size:var(--fs-lg); font-weight:640; letter-spacing:-.02em; }
+  .sheet .sh { display:flex; align-items:center; gap:var(--sp-3); padding:var(--sp-5) var(--sp-5) var(--sp-3); }
+  .sheet .sb { padding:0 var(--sp-5) var(--sp-5); }
+  .check { display:flex; align-items:center; gap:10px; padding:9px 0; font-size:var(--fs-sm); border-top:1px solid var(--line-1); }
+  .check:first-of-type { border-top:none; }
+  .field { display:flex; align-items:center; gap:var(--sp-3); padding:var(--sp-3) var(--sp-4); background:var(--bg-1);
+    border:1px solid var(--line-1); border-radius:var(--r-md); margin-bottom:var(--sp-3); }
+  .field input { flex:1; background:transparent; border:none; outline:none; color:var(--tx-1); font-family:var(--font-mono); font-size:var(--fs-xs); }
+  .field input::placeholder { color:var(--tx-3); }
+
+  /* ═══ app detail (public) ═══ */
+  .pub { flex:1; overflow:auto; }
+  .pub-inner { max-width:920px; margin:0 auto; padding:var(--sp-7) var(--sp-6) var(--sp-9); }
+  .pub-hero { border:1px solid var(--line-1); border-radius:var(--r-xl); overflow:hidden; background:var(--bg-2); }
+  .pub-shot { height:300px; background:var(--bg-3); position:relative; }
+  .pub-shot::after { content:''; position:absolute; inset:0; background:radial-gradient(90% 70% at 15% 0%, color-mix(in srgb,var(--accent) 26%,transparent), transparent 60%); }
+  .pub-body { padding:var(--sp-6); display:flex; gap:var(--sp-6); align-items:flex-start; }
+  .pub-body h1 { margin:0 0 6px; font-size:26px; letter-spacing:-.03em; font-weight:650; }
+  .pub-body p { margin:0 0 var(--sp-4); color:var(--tx-2); max-width:520px; }
+
+  /* ═══ onboarding ═══ */
+  .onboard { flex:1; display:grid; place-items:center; padding:var(--sp-8) var(--sp-5); background:
+    radial-gradient(90% 60% at 50% -10%, color-mix(in srgb,var(--accent) 16%,transparent), transparent 60%), var(--bg-0); overflow:auto; }
+  .onboard-inner { width:100%; max-width:520px; }
+  .steps { display:flex; gap:6px; margin-bottom:var(--sp-6); }
+  .steps i { height:3px; flex:1; border-radius:var(--r-full); background:var(--bg-3); }
+  .steps i.on { background:var(--spectrum); }
+
+  /* ═══ command palette ═══ */
+  .palette-wrap { flex:1; display:grid; place-items:start center; padding-top:12vh; background:color-mix(in srgb,var(--bg-0) 60%,transparent); }
+  .palette { width:min(560px,92vw); background:var(--bg-2); border:1px solid var(--line-2); border-radius:var(--r-lg); box-shadow:var(--shadow-3); overflow:hidden; }
+  .palette input { width:100%; padding:16px var(--sp-4); background:transparent; border:none; outline:none; color:var(--tx-1); font-size:var(--fs-lg); }
+  .palette .group { border-top:1px solid var(--line-1); padding:var(--sp-2) 0 var(--sp-3); }
+  .palette .group .gl { padding:6px var(--sp-4) 4px; }
+  .palette .cmd { display:flex; align-items:center; gap:10px; padding:8px var(--sp-4); font-size:var(--fs-sm); color:var(--tx-2); }
+  .palette .cmd.sel { background:var(--accent-soft); color:var(--tx-1); }
+  .palette .cmd .ic { width:20px; text-align:center; color:var(--tx-3); }
+  .palette .cmd .kbd { margin-left:auto; }
+
+  /* ═══ discover ═══ */
+  .page { flex:1; overflow:auto; padding:var(--sp-6) var(--sp-7) var(--sp-9); }
+  .page-inner { max-width:1180px; margin:0 auto; }
+  .page-head { display:flex; align-items:flex-end; gap:var(--sp-4); margin-bottom:var(--sp-5); }
+  .page-head h1 { font-size:24px; font-weight:650; letter-spacing:-.03em; margin:0; }
+  .page-head p { color:var(--tx-2); margin:5px 0 0; font-size:var(--fs-sm); }
+  .filters { display:flex; gap:var(--sp-2); margin-bottom:var(--sp-5); flex-wrap:wrap; }
+  .filter { padding:6px 12px; border-radius:var(--r-full); border:1px solid var(--line-1); background:var(--bg-2); color:var(--tx-2); font-size:var(--fs-xs); font-weight:540; cursor:pointer; }
+  .filter.on { background:var(--tx-1); color:var(--bg-0); border-color:transparent; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:var(--sp-5); }
+  .tile { background:var(--bg-2); border:1px solid var(--line-1); border-radius:var(--r-lg); overflow:hidden; cursor:pointer; transition:all var(--dur-2) var(--ease); }
+  .tile:hover { transform:translateY(-3px); box-shadow:var(--shadow-3); border-color:var(--line-2); }
+  .tile .shot { height:150px; background:var(--bg-3); border-bottom:1px solid var(--line-1); position:relative; overflow:hidden; }
+  .tile .shot::after { content:''; position:absolute; inset:0; background:radial-gradient(100% 80% at 20% 0%, color-mix(in srgb,var(--accent) 26%,transparent), transparent 55%); }
+  .tile .info { padding:var(--sp-4); }
+  .tile .info h3 { margin:0 0 3px; font-size:var(--fs-sm); font-weight:600; }
+  .tile .info p { margin:0; color:var(--tx-3); font-size:var(--fs-xs); }
+  .tile .row { display:flex; align-items:center; gap:8px; margin-top:var(--sp-3); }
+  .tile .who { display:flex; align-items:center; gap:7px; margin-left:auto; font-size:var(--fs-xs); color:var(--tx-3); }
+  .mini-av { width:20px; height:20px; border-radius:50%; background:linear-gradient(135deg,var(--accent),var(--accent-2)); }
+
+  /* ═══ settings ═══ */
+  .settings { display:grid; grid-template-columns:200px minmax(0,1fr); flex:1; min-height:0; }
+  .settings-nav { border-right:1px solid var(--line-1); background:var(--bg-1); padding:var(--sp-4) var(--sp-3); }
+  .settings-nav .item { display:block; width:100%; text-align:left; padding:8px 10px; border-radius:var(--r-sm); color:var(--tx-2);
+    font-size:var(--fs-sm); cursor:pointer; border:none; background:transparent; margin-bottom:2px; }
+  .settings-nav .item.on { background:var(--bg-3); color:var(--tx-1); font-weight:560; }
+  .settings-body { overflow:auto; padding:var(--sp-6) var(--sp-7); }
+  .settings-inner { max-width:720px; }
+  .group { margin-bottom:var(--sp-7); }
+  .group h3 { font-size:var(--fs-sm); font-weight:620; margin:0 0 3px; }
+  .group .desc { color:var(--tx-3); font-size:var(--fs-xs); margin:0 0 var(--sp-4); }
+  .setting { display:flex; align-items:center; gap:var(--sp-4); padding:var(--sp-4); background:var(--bg-2); border:1px solid var(--line-1);
+    border-radius:var(--r-md); margin-bottom:var(--sp-3); }
+  .setting .txt { flex:1; }
+  .setting .txt b { display:block; font-size:var(--fs-sm); font-weight:580; margin-bottom:2px; }
+  .setting .txt span { color:var(--tx-3); font-size:var(--fs-xs); }
+  .switch { width:38px; height:22px; border-radius:var(--r-full); background:var(--bg-4); position:relative; border:1px solid var(--line-1); flex:none; }
+  .switch.on { background:var(--accent); border-color:transparent; }
+  .switch i { position:absolute; top:2px; left:2px; width:16px; height:16px; border-radius:50%; background:#fff; transition:all var(--dur-2) var(--ease); }
+  .switch.on i { left:18px; }
+
+  /* ═══ mobile frames ═══ */
+  .phones { display:flex; gap:var(--sp-6); padding:var(--sp-7); overflow:auto; justify-content:center; align-items:flex-start; }
+  .phone { width:340px; flex:none; border:1px solid var(--line-2); border-radius:34px; background:var(--bg-0); overflow:hidden;
+    box-shadow:var(--shadow-3); display:flex; flex-direction:column; height:660px; }
+  .phone .notch { height:26px; display:grid; place-items:center; }
+  .phone .notch i { width:86px; height:5px; border-radius:var(--r-full); background:var(--bg-3); }
+  .phone .screen-area { flex:1; overflow:auto; }
+  .tabbar { display:flex; border-top:1px solid var(--line-1); background:var(--bg-1); padding:8px 0 14px; }
+  .tabbar .tab { flex:1; display:grid; place-items:center; gap:3px; color:var(--tx-3); font-size:10px; }
+  .tabbar .tab.on { color:var(--tx-1); }
+  .tabbar .tab .ic { font-size:15px; }
+  .m-top { display:flex; align-items:center; gap:8px; padding:10px 14px; border-bottom:1px solid var(--line-1); }
+  .m-pad { padding:14px; }
+  .m-hero { font-size:24px; font-weight:660; letter-spacing:-.03em; line-height:1.12; margin:0 0 6px; }
+  .m-hero .grad { background:var(--spectrum); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .m-composer { margin:14px; border:1px solid var(--line-1); background:var(--bg-2); border-radius:var(--r-lg); padding:12px; }
+  .m-msg { display:flex; gap:9px; padding:12px 14px; }
+  .m-msg .av { width:24px; height:24px; border-radius:8px; flex:none; display:grid; place-items:center; font-size:10px; font-weight:700; }
+  .m-msg .av.me { background:var(--bg-4); color:var(--tx-2); border:1px solid var(--line-1); }
+  .m-msg .av.ai { background:var(--bg-3); color:var(--mark); border:1px solid var(--line-1); }
+  .m-msg .txt { font-size:13px; }
+</style>
+</head>
+<body>
+
+<div class="sheet-bar">
+  <div class="sheet-brand"><span class="mark" style="width:18px;height:18px;color:var(--mark)"><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M4 26 16 5l12 21H4Zm12-21v21M4 26l18-10"/></svg></span>
+    <svg class="wordmark" viewBox="0 0 54.63 25.08" role="img" aria-label="Prysm"><g fill="currentColor" transform="scale(0.009277)"><path transform="translate(0.00 0)" d="M148 -418H368V175H380C419 104 500 -22 703 -22C975 -22 1170 195 1170 556C1170 920 971 1132 703 1132C494 1132 419 1005 380 936H362V1118H148ZM654 165C468 165 364 325 364 558C364 790 465 945 654 945C848 945 945 778 945 558C945 336 845 165 654 165Z"/><path transform="translate(1212.11 0)" d="M148 0H368V679C368 826 480 930 634 930C680 930 733 922 749 918V1128C726 1131 684 1134 656 1134C525 1134 414 1060 373 938H361V1118H148Z"/><path transform="translate(1950.21 0)" d="M133 -402C160 -414 218 -426 287 -426C467 -426 578 -334 646 -155L1132 1118H896L671 483C636 386 611 289 586 193C562 289 539 385 505 483L284 1118H46L471 -5L447 -87C406 -231 326 -259 212 -229L187 -223Z"/><path transform="translate(3074.32 0)" d="M549 -23C822 -23 1010 121 1010 325C1010 480 912 580 705 627L525 667C402 695 352 739 352 813C352 897 444 958 565 958C697 958 760 888 789 810L986 853C938 1019 805 1132 563 1132C310 1132 130 999 130 799C130 639 230 537 438 490L626 447C732 423 783 377 783 306C783 223 693 155 551 155C421 155 336 209 305 326L98 283C138 85 306 -23 549 -23Z"/><path transform="translate(4123.42 0)" d="M148 0H368V695C368 858 474 944 597 944C715 944 801 865 801 746V0H1018V716C1018 849 1102 944 1241 944C1355 944 1451 881 1451 732V0H1671V754C1671 1008 1515 1137 1317 1137C1158 1137 1020 1053 963 902C919 1050 823 1137 677 1137C544 1137 419 1064 362 909L357 1118H148Z"/></g><circle cx="56.83" cy="16.34" r="1.6" fill="var(--mark)"/></svg>
+    <span style="color:var(--tx-3);font-weight:500">build</span> <span style="color:var(--tx-3);font-weight:500">v5</span></div>
+  <div class="sheet-tabs" id="tabs">
+    <button data-screen="home" aria-pressed="true">Home</button>
+    <button data-screen="onboard" aria-pressed="false">Onboarding</button>
+    <button data-screen="chat" aria-pressed="false">Chat</button>
+    <button data-screen="states" aria-pressed="false">States</button>
+    <button data-screen="workspace" aria-pressed="false">Workspace</button>
+    <button data-screen="publish" aria-pressed="false">Publish</button>
+    <button data-screen="appdetail" aria-pressed="false">App page</button>
+    <button data-screen="discover" aria-pressed="false">Discover</button>
+    <button data-screen="palette" aria-pressed="false">⌘K</button>
+    <button data-screen="settings" aria-pressed="false">Settings</button>
+    <button data-screen="mobile" aria-pressed="false">Mobile</button>
+  </div>
+  <div class="sheet-ctl">
+    <button id="densityBtn">density: comfortable</button>
+    <button id="themeBtn">◐</button>
+  </div>
+</div>
+
+<!-- ═══════════════ HOME ═══════════════ -->
+<section class="screen is-active" id="screen-home">
+  <div class="app">
+    <nav class="rail">
+      <div class="rail-logo"><svg class="mark" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-label="Prysm"><path d="M4 26 16 5l12 21H4Zm12-21v21M4 26l18-10"/></svg></div>
+      <button class="rail-btn is-active">✦</button><button class="rail-btn">◈</button><button class="rail-btn">▤</button><button class="rail-btn">✉</button>
+      <div class="rail-spacer"></div><button class="rail-btn">⚙</button><div class="avatar">A</div>
+    </nav>
+    <main class="main">
+      <div class="topbar">
+        <div class="app-name"><svg class="mark" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-label="Prysm"><path d="M4 26 16 5l12 21H4Zm12-21v21M4 26l18-10"/></svg> New app</div>
+        <div class="spacer"></div>
+        <span class="meta">12 credits</span>
+        <button class="picker">GLM 4.6 <span class="caret">▾</span></button>
+        <button class="icon-btn" title="Command palette"><span class="kbd">⌘K</span></button>
+      </div>
+      <div class="home">
+        <div class="home-main">
+          <div class="home-main-inner">
+            <div class="eyebrow"><span class="bar"></span> prysm build <span class="bar"></span></div>
+            <h1 class="title">Describe it.<br /><span class="grad">Ship it in minutes.</span></h1>
+            <p class="lede">An agent writes the code, runs it, and repairs it in a loop. You stay in the conversation.</p>
+            <div class="composer">
+              <div class="body"><span class="placeholder">A todo list app with due dates and reminders…</span></div>
+              <div class="footer">
+                <button class="tool">＋</button><button class="tool">▣</button><button class="tool">◱</button>
+                <div class="spacer"></div><span class="meta">GLM 4.6 <span style="opacity:.5">▾</span></span>
+                <button class="btn primary">Build <span style="opacity:.7">↵</span></button>
+              </div>
+            </div>
+            <div class="section-head" style="display:flex;align-items:baseline;gap:var(--sp-3);margin:var(--sp-7) 0 var(--sp-3)">
+              <h2 style="font-size:var(--fs-sm);font-weight:620;margin:0">Pick up where you left off</h2>
+              <span style="color:var(--tx-3);font-size:var(--fs-xs)">3 in progress</span>
+              <span style="margin-left:auto;color:var(--accent-2);font-size:var(--fs-xs)">All apps →</span>
+            </div>
+            <div class="recents">
+              <div class="rec"><b>Todo list</b><span>building · 2m ago</span></div>
+              <div class="rec"><b>Invoice tracker</b><span>ready · 1h ago</span></div>
+              <div class="rec"><b>Habit log</b><span>ready · 1d ago</span></div>
+            </div>
+          </div>
+        </div>
+        <aside class="live-canvas">
+          <div class="live-head"><span class="dot pulse"></span><span class="t">Live build</span><span class="spacer"></span><span class="meta">Todo list</span></div>
+          <div class="live-card">
+            <div class="live-steps">
+              <div class="lstep"><span class="st done">✓</span><span class="lbl">Scaffold &amp; routing</span></div>
+              <div class="lstep"><span class="st done">✓</span><span class="lbl">Todo model</span></div>
+              <div class="lstep"><span class="st run">◆</span><span class="lbl">Reminder scheduling</span><span class="wave"><i></i><i></i><i></i><i></i></span></div>
+              <div class="lstep"><span class="st todo">○</span><span class="lbl muted">Run &amp; repair</span></div>
+            </div>
+          </div>
+          <div class="live-card">
+            <div class="micro" style="margin-bottom:8px">writing</div>
+            <div class="fileprog" style="border:none;padding:4px 0"><span class="nm">src/reminders.ts</span><span class="bar"><i style="width:62%"></i></span></div>
+            <div class="fileprog" style="border:none;padding:4px 0"><span class="nm">src/store.ts</span><span class="sz">+42 −8</span></div>
+          </div>
+          <div class="live-card" style="padding:0;overflow:hidden">
+            <div class="preview-head" style="height:30px;border-bottom:1px solid var(--line-1)"><div class="urlbar" style="height:22px;font-size:10px">todo-list.app.prysm.sh</div></div>
+            <div class="mock-app" style="margin:0;border:none;border-radius:0;padding:12px">
+              <h4>Today</h4>
+              <div class="todo done" style="font-size:12px;padding:6px 0"><span class="box"></span><span>Renew domain</span></div>
+              <div class="todo" style="font-size:12px;padding:6px 0"><span class="box"></span><span>Ship pricing page</span></div>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </main>
+  </div>
+</section>
+
+<!-- ═══════════════ ONBOARDING ═══════════════ -->
+<section class="screen" id="screen-onboard">
+  <div class="app">
+    <nav class="rail">
+      <div class="rail-logo"><svg class="mark" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-label="Prysm"><path d="M4 26 16 5l12 21H4Zm12-21v21M4 26l18-10"/></svg></div>
+      <button class="rail-btn">✦</button><button class="rail-btn">◈</button><button class="rail-btn">▤</button><button class="rail-btn">✉</button>
+      <div class="rail-spacer"></div><button class="rail-btn">⚙</button><div class="avatar">A</div>
+    </nav>
+    <main class="main">
+      <div class="topbar"><div class="app-name"><svg class="mark" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-label="Prysm"><path d="M4 26 16 5l12 21H4Zm12-21v21M4 26l18-10"/></svg> Welcome</div></div>
+      <div class="onboard">
+        <div class="onboard-inner">
+          <div class="steps"><i class="on"></i><i></i><i></i></div>
+          <div class="eyebrow"><span class="bar"></span> step 1 of 3 <span class="bar"></span></div>
+          <h1 class="title" style="font-size:32px">You are signed in as<br /><span class="grad">alessio@linux.com</span></h1>
+          <p class="lede">prysm.sh owns your identity, your apps and your billing. The builder borrows the account — nothing else to create.</p>
+          <div class="live-card" style="margin-bottom:var(--sp-5)">
+            <div class="kv"><span class="k">Identity</span><span class="v">prysm.sh (default tenant)</span></div>
+            <div class="kv"><span class="k">Tenant</span><span class="v">default</span></div>
+            <div class="kv"><span class="k">Model</span><span class="v">GLM 4.6</span></div>
+          </div>
+          <div class="actions" style="margin-top:0">
+            <button class="btn primary">Continue</button>
+            <button class="btn ghost">Use a different account</button>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</section>
+
+<!-- ═══════════════ CHAT (deep) ═══════════════ -->
+<section class="screen" id="screen-chat">
+  <div class="app">
+    <nav class="rail">
+      <div class="rail-logo"><svg class="mark" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-label="Prysm"><path d="M4 26 16 5l12 21H4Zm12-21v21M4 26l18-10"/></svg></div>
+      <button class="rail-btn">✦</button><button class="rail-btn">◈</button><button class="rail-btn">▤</button><button class="rail-btn is-active">✉</button>
+      <div class="rail-spacer"></div><button class="rail-btn">⚙</button><div class="avatar">A</div>
+    </nav>
+    <main class="main">
+      <div class="topbar">
+        <div class="app-name"><svg class="mark" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-label="Prysm"><path d="M4 26 16 5l12 21H4Zm12-21v21M4 26l18-10"/></svg> Todo list</div>
+        <div class="viewtabs">
+          <button class="on">Chat</button><button>Preview</button><button>Code</button>
+        </div>
+        <div class="spacer"></div>
+        <span class="status"><span class="dot pulse"></span> running</span>
+        <button class="picker">GLM 4.6 <span class="caret">▾</span></button>
+        <button class="icon-btn" title="Open workspace">⌗</button>
+        <button class="btn primary sm">Deploy</button>
+      </div>
+      <div class="chat">
+        <div class="chat-main">
+          <div class="thread">
+            <div class="thread-inner">
+              <div class="msg user"><div class="who">A</div><div class="bubble">create a todo list app with due dates</div></div>
+
+              <div class="msg agent">
+                <div class="who">✦</div>
+                <div class="bubble">
+                  <div class="head"><span class="who-name">prysm build</span><span class="meta">GLM 4.6</span><span class="meta mono">4.2s</span></div>
+                  <p style="margin:0 0 4px">Here's the plan — four passes, each verified before the next.</p>
+
+                  <div class="panel">
+                    <div class="panel-head"><span class="t">Build plan</span><div class="spacer"></div><span class="meta mono">3 / 4</span></div>
+                    <div class="panel-row"><span class="st done">✓</span><span class="lbl">Scaffold project &amp; routing</span><span class="mono" style="color:var(--tx-3);font-size:var(--fs-xs)">src/app.tsx</span></div>
+                    <div class="panel-row"><span class="st done">✓</span><span class="lbl">Todo model with due dates</span><span class="mono" style="color:var(--tx-3);font-size:var(--fs-xs)">src/store.ts</span></div>
+                    <div class="panel-row"><span class="st run">◆</span><span class="lbl">Reminder scheduling</span><span class="wave"><i></i><i></i><i></i><i></i></span></div>
+                    <div class="panel-row"><span class="st todo">○</span><span class="lbl muted">Run &amp; repair loop</span><span class="mono" style="color:var(--tx-3);font-size:var(--fs-xs)">preview</span></div>
+                  </div>
+
+                  <div class="panel">
+                    <div class="panel-head"><span class="t">Files</span><div class="spacer"></div><span class="meta mono">+3 −1</span></div>
+                    <div class="fileprog"><span style="color:var(--ok)">＋</span><span class="nm">src/components/TodoList.tsx</span><span class="sz">+128</span></div>
+                    <div class="fileprog"><span style="color:var(--ok)">＋</span><span class="nm">src/components/DueDate.tsx</span><span class="sz">+64</span></div>
+                    <div class="fileprog"><span style="color:var(--err)">－</span><span class="nm">src/legacy/todo.ts</span><span class="sz">−91</span></div>
+                    <div class="fileprog"><span class="dot pulse"></span><span class="nm">src/reminders.ts</span><span class="bar"><i style="width:62%"></i></span></div>
+                  </div>
+
+                  <div class="diff">
+                    <div class="dh"><span>src/components/DueDate.tsx</span><div class="spacer"></div><span style="color:var(--ok)">+64</span><span style="color:var(--err)">−2</span><span class="kbd">⌘D</span></div>
+                    <div class="dl add"><span class="ln">12</span><span class="tx">+export const DueDate = ({ date }: Props) =&gt; (</span></div>
+                    <div class="dl add"><span class="ln">13</span><span class="tx">+  &lt;time dateTime={date.toISOString()}&gt;</span></div>
+                    <div class="dl add"><span class="ln">14</span><span class="tx">+    {date.toLocaleDateString()}</span></div>
+                    <div class="dl del"><span class="ln">15</span><span class="tx">-  {date}</span></div>
+                    <div class="dl add"><span class="ln">16</span><span class="tx">+  &lt;/time&gt;</span></div>
+                    <div class="dl add"><span class="ln">17</span><span class="tx">+);</span></div>
+                  </div>
+
+                  <div class="trace open">
+                    <div class="trace-head"><span class="tw">▸</span><span>reasoned for 4.2s</span><div class="spacer"></div><span>12.4k tokens</span></div>
+                    <div class="trace-body">The user asked for due dates but not reminders — I'll put reminders behind a toggle so the default stays simple, and use local storage for the first pass.</div>
+                  </div>
+
+                  <div class="actions">
+                    <button class="btn sm">Branch this</button>
+                    <button class="btn sm">Retry step</button>
+                    <button class="btn sm ghost">Copy diagnostics</button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="msg agent">
+                <div class="who">✦</div>
+                <div class="bubble">
+                  <div class="err-card">
+                    <div class="ttl">✕ Step failed — reminder scheduling</div>
+                    <div class="msg">TypeError: reminders.notify is not a function<br />at src/reminders.ts:42</div>
+                    <div class="actions" style="margin-top:10px">
+                      <button class="btn sm primary">Let the agent repair it</button>
+                      <button class="btn sm">Show me the diff</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="composer-dock">
+            <div class="composer">
+              <div class="body" style="min-height:52px"><span class="placeholder">Ask for a change…</span></div>
+              <div class="footer"><button class="tool">＋</button><button class="tool">▣</button><div class="spacer"></div>
+                <button class="picker">GLM 4.6 <span class="caret">▾</span></button><button class="btn primary sm">Send ↵</button></div>
+            </div>
+          </div>
+        </div>
+
+        <aside class="rail-panel">
+          <div class="panel-section">
+            <h4 class="micro" style="margin:0 0 var(--sp-3)">session</h4>
+            <div class="kv"><span class="k">Model</span><span class="v">GLM 4.6</span></div>
+            <div class="kv"><span class="k">Provider</span><span class="v">Zhipu</span></div>
+            <div class="kv"><span class="k">Tokens</span><span class="v">18.4k</span></div>
+            <div class="kv"><span class="k">Latency</span><span class="v">1.9s</span></div>
+            <div class="kv"><span class="k">Context</span><span class="v">12%</span></div>
+            <div class="meter"><i style="width:12%"></i></div>
+          </div>
+          <div class="panel-section">
+            <h4 class="micro" style="margin:0 0 var(--sp-3)">files</h4>
+            <div class="kv"><span class="k">added</span><span class="v">3</span></div>
+            <div class="kv"><span class="k">modified</span><span class="v">5</span></div>
+            <div class="kv"><span class="k">removed</span><span class="v">1</span></div>
+          </div>
+          <div class="panel-section">
+            <h4 class="micro" style="margin:0 0 var(--sp-3)">branch</h4>
+            <div class="kv"><span class="k">current</span><span class="v">main</span></div>
+            <div class="kv"><span class="k">from</span><span class="v">msg 3</span></div>
+            <button class="btn sm" style="width:100%;margin-top:8px">Compare branches</button>
+          </div>
+        </aside>
+      </div>
+    </main>
+  </div>
+</section>
+
+<!-- ═══════════════ STATES ═══════════════ -->
+<section class="screen" id="screen-states">
+  <div class="app">
+    <nav class="rail"><div class="rail-logo"><svg class="mark" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-label="Prysm"><path d="M4 26 16 5l12 21H4Zm12-21v21M4 26l18-10"/></svg></div><button class="rail-btn">✦</button><button class="rail-btn">◈</button>
+      <button class="rail-btn">▤</button><button class="rail-btn">✉</button><div class="rail-spacer"></div><button class="rail-btn">⚙</button><div class="avatar">A</div></nav>
+    <main class="main">
+      <div class="topbar"><div class="app-name"><svg class="mark" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-label="Prysm"><path d="M4 26 16 5l12 21H4Zm12-21v21M4 26l18-10"/></svg> System states</div><div class="spacer"></div><span class="meta">loading · empty · error · limit</span></div>
+      <div class="gallery"><div class="gallery-inner">
+        <div class="ggrid">
+          <div class="gcard"><div class="gh"><b>Skeleton — app list</b><span class="spacer"></span><span class="status"><span class="dot pulse"></span> loading</span></div>
+            <div class="gb">
+              <div class="skel-row"><div class="skel" style="width:36px;height:36px;border-radius:10px"></div><div style="flex:1"><div class="skel" style="width:60%"></div><div class="skel" style="width:35%;margin-top:8px;height:8px"></div></div></div>
+              <div class="skel-row"><div class="skel" style="width:36px;height:36px;border-radius:10px"></div><div style="flex:1"><div class="skel" style="width:45%"></div><div class="skel" style="width:28%;margin-top:8px;height:8px"></div></div></div>
+              <div class="skel-row"><div class="skel" style="width:36px;height:36px;border-radius:10px"></div><div style="flex:1"><div class="skel" style="width:52%"></div><div class="skel" style="width:32%;margin-top:8px;height:8px"></div></div></div>
+            </div></div>
+
+          <div class="gcard"><div class="gh"><b>Pending — agent thinking</b><span class="spacer"></span><span class="status"><span class="dot pulse"></span> streaming</span></div>
+            <div class="gb">
+              <div class="pending"><span class="wave"><i></i><i></i><i></i><i></i></span><span>Reading src/store.ts…</span></div>
+              <div class="pending" style="margin-top:12px"><span class="wave"><i></i><i></i><i></i><i></i></span><span>Writing src/reminders.ts</span></div>
+              <div class="pending" style="margin-top:12px;color:var(--tx-3)"><span class="dot" style="background:var(--tx-3)"></span><span>Queued: run &amp; repair</span></div>
+            </div></div>
+
+          <div class="gcard"><div class="gh"><b>Error — upstream rejected</b><span class="spacer"></span><span class="status err">4xx</span></div>
+            <div class="gb">
+              <div class="err-card" style="margin-top:0">
+                <div class="ttl">✕ Bad Request</div>
+                <div class="msg">AI_APICallError: Bad Request<br />POST /v4/chat/completions → 400</div>
+                <div class="actions" style="margin-top:10px"><button class="btn sm primary">Retry</button><button class="btn sm">Switch model</button><button class="btn sm ghost">Diagnostics</button></div>
+              </div>
+            </div></div>
+
+          <div class="gcard"><div class="gh"><b>Error — provider down</b><span class="spacer"></span><span class="status warn">fallback</span></div>
+            <div class="gb">
+              <div class="live-card" style="margin:0">
+                <div class="kv"><span class="k">Primary</span><span class="v" style="color:var(--warn)">Zhipu unreachable</span></div>
+                <div class="kv"><span class="k">Fallback</span><span class="v">GPT-OSS 120B</span></div>
+                <div class="kv"><span class="k">Impact</span><span class="v">none — switched silently</span></div>
+              </div>
+              <div class="actions"><button class="btn sm">Pin GPT-OSS</button><button class="btn sm ghost">Dismiss</button></div>
+            </div></div>
+
+          <div class="gcard"><div class="gh"><b>Rate limited</b><span class="spacer"></span><span class="status warn">limit</span></div>
+            <div class="gb">
+              <div class="live-card" style="margin:0;border-color:color-mix(in srgb,var(--warn) 35%,transparent)">
+                <div style="font-weight:600;margin-bottom:4px">App creation limit reached</div>
+                <div style="color:var(--tx-2);font-size:var(--fs-xs)">3 apps per 24 hours. Resets in 6h 12m.</div>
+              </div>
+              <div class="actions"><button class="btn sm">Upgrade</button><button class="btn sm ghost">Wait</button></div>
+            </div></div>
+
+          <div class="gcard"><div class="gh"><b>Empty — no apps yet</b><span class="spacer"></span></div>
+            <div class="gb">
+              <div class="empty"><div class="glyph">✦</div>
+                <div style="font-size:var(--fs-sm);color:var(--tx-1);font-weight:560;margin-bottom:4px">No apps yet</div>
+                <div style="font-size:var(--fs-xs)">Describe what you want and the agent will build it.</div>
+                <button class="btn primary sm" style="margin-top:12px">Build your first app</button>
+              </div>
+            </div></div>
+        </div>
+      </div></div>
+    </main>
+  </div>
+</section>
+
+<!-- ═══════════════ WORKSPACE ═══════════════ -->
+<section class="screen" id="screen-workspace">
+  <div class="app">
+    <nav class="rail"><div class="rail-logo"><svg class="mark" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-label="Prysm"><path d="M4 26 16 5l12 21H4Zm12-21v21M4 26l18-10"/></svg></div><button class="rail-btn">✦</button><button class="rail-btn">◈</button>
+      <button class="rail-btn is-active">▤</button><button class="rail-btn">✉</button><div class="rail-spacer"></div><button class="rail-btn">⚙</button><div class="avatar">A</div></nav>
+    <main class="main">
+      <div class="topbar">
+        <div class="app-name"><svg class="mark" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-label="Prysm"><path d="M4 26 16 5l12 21H4Zm12-21v21M4 26l18-10"/></svg> Todo list</div>
+        <div class="viewtabs">
+          <button class="on">Code</button><button>Preview</button><button>Docs</button><button>Blueprint</button>
+        </div>
+        <div class="spacer"></div>
+        <span class="status ok"><span class="dot"></span> synced</span>
+        <button class="icon-btn" title="Command palette"><span class="kbd">⌘K</span></button>
+        <button class="btn primary sm">Deploy</button>
+      </div>
+      <div class="ws">
+        <div class="ws-left"><div class="tree">
+          <div class="node dir">▾ src</div>
+          <div class="node child">app.tsx</div>
+          <div class="node child active">TodoList.tsx</div>
+          <div class="node child">DueDate.tsx</div>
+          <div class="node child">reminders.ts</div>
+          <div class="node child">store.ts</div>
+          <div class="node dir">▸ components</div><div class="node dir">▸ lib</div><div class="node dir">▸ public</div>
+          <div class="node">package.json</div><div class="node">wrangler.jsonc</div>
+        </div></div>
+        <div class="ws-editor">
+          <div class="editor-head"><span>src/TodoList.tsx</span><div class="spacer"></div><span>TypeScript</span><span>·</span><span>utf-8</span></div>
+          <div class="editor-body">
+            <div class="ln"><span class="n">1</span><span><span class="k">import</span> { useState } <span class="k">from</span> <span class="s">'react'</span>;</span></div>
+            <div class="ln"><span class="n">2</span><span><span class="k">import</span> { Todo } <span class="k">from</span> <span class="s">'./store'</span>;</span></div>
+            <div class="ln"><span class="n">3</span><span></span></div>
+            <div class="ln"><span class="n">4</span><span><span class="k">export default function</span> <span class="f">TodoList</span>() {</span></div>
+            <div class="ln"><span class="n">5</span><span>  <span class="k">const</span> [todos, setTodos] = <span class="f">useState</span>&lt;Todo[]&gt;([]);</span></div>
+            <div class="ln"><span class="n">6</span><span></span></div>
+            <div class="ln"><span class="n">7</span><span>  <span class="k">return</span> (</span></div>
+            <div class="ln"><span class="n">8</span><span>    &lt;<span class="f">ul</span> <span class="f">className</span>=<span class="s">"todo-list"</span>&gt;</span></div>
+            <div class="ln"><span class="n">9</span><span>      {todos.<span class="f">map</span>((todo) =&gt; (</span></div>
+            <div class="ln"><span class="n">10</span><span>        &lt;<span class="f">TodoItem</span> <span class="f">key</span>={todo.id} <span class="f">todo</span>={todo} /&gt;</span></div>
+            <div class="ln"><span class="n">11</span><span>      ))}</span></div>
+            <div class="ln"><span class="n">12</span><span>    &lt;/<span class="f">ul</span>&gt;</span></div>
+            <div class="ln"><span class="n">13</span><span>  );</span></div>
+            <div class="ln"><span class="n">14</span><span>}</span></div>
+          </div>
+          <div class="statusbar"><span>main*</span><span>↑2 ↓0</span><div class="spacer"></div><span>Ln 5, Col 24</span><span>TS</span><span>UTF-8</span></div>
+        </div>
+        <div class="ws-preview">
+          <div class="preview-head"><button class="tool">▣</button><button class="tool">↻</button>
+            <div class="urlbar">https://todo-list.app.prysm.sh</div><span class="status ok"><span class="dot"></span> live</span></div>
+          <div class="mock-app"><h4>Today</h4>
+            <div class="todo done"><span class="box"></span><span>Renew domain</span></div>
+            <div class="todo"><span class="box"></span><span>Ship the pricing page</span></div>
+            <div class="todo"><span class="box"></span><span>Book flights</span></div>
+            <h4 style="margin-top:18px">Upcoming</h4>
+            <div class="todo"><span class="box"></span><span>Quarterly review — Friday</span></div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</section>
+
+<!-- ═══════════════ PUBLISH ═══════════════ -->
+<section class="screen" id="screen-publish">
+  <div class="app">
+    <nav class="rail"><div class="rail-logo"><svg class="mark" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-label="Prysm"><path d="M4 26 16 5l12 21H4Zm12-21v21M4 26l18-10"/></svg></div><button class="rail-btn">✦</button><button class="rail-btn">◈</button>
+      <button class="rail-btn is-active">▤</button><button class="rail-btn">✉</button><div class="rail-spacer"></div><button class="rail-btn">⚙</button><div class="avatar">A</div></nav>
+    <main class="main">
+      <div class="topbar"><div class="app-name"><svg class="mark" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-label="Prysm"><path d="M4 26 16 5l12 21H4Zm12-21v21M4 26l18-10"/></svg> Todo list</div><div class="viewtabs"><button>Chat</button><button class="on">Publish</button></div></div>
+      <div class="sheet-wrap">
+        <div class="sheet">
+          <div class="sh"><div style="flex:1"><h2>Publish Todo list</h2><div style="color:var(--tx-3);font-size:var(--fs-xs);margin-top:3px">prysm.sh owns the identity; your app gets its own origin.</div></div>
+            <button class="tool">✕</button></div>
+          <div class="sb">
+            <div class="micro" style="margin-bottom:6px">preflight</div>
+            <div class="check"><span class="st done">✓</span><span>Build passes</span><div class="spacer"></div><span class="meta mono">2.1s</span></div>
+            <div class="check"><span class="st done">✓</span><span>Tests pass</span><div class="spacer"></div><span class="meta mono">18 / 18</span></div>
+            <div class="check"><span class="st run">◆</span><span>Building preview</span><div class="spacer"></div><span class="wave"><i></i><i></i><i></i><i></i></span></div>
+            <div class="check"><span class="st todo">○</span><span class="muted" style="color:var(--tx-3)">Attach domain</span></div>
+            <div class="check"><span class="st todo">○</span><span class="muted" style="color:var(--tx-3)">Go live</span></div>
+
+            <div class="micro" style="margin:var(--sp-5) 0 6px">domain</div>
+            <div class="field"><input value="todo-list.app.prysm.sh" /><button class="btn sm">Check</button></div>
+            <div class="field"><input placeholder="your-domain.com" /><span class="tag">custom</span></div>
+
+            <div class="micro" style="margin:var(--sp-5) 0 6px">environment</div>
+            <div class="field"><input placeholder="KEY" /><input placeholder="value" /><button class="btn sm">Add</button></div>
+
+            <div class="actions" style="margin-top:var(--sp-5)">
+              <button class="btn primary">Publish</button><button class="btn ghost">Cancel</button>
+              <div class="spacer"></div><span class="meta">est. 40s</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</section>
+
+<!-- ═══════════════ APP DETAIL (public) ═══════════════ -->
+<section class="screen" id="screen-appdetail">
+  <div class="app">
+    <nav class="rail"><div class="rail-logo"><svg class="mark" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-label="Prysm"><path d="M4 26 16 5l12 21H4Zm12-21v21M4 26l18-10"/></svg></div><button class="rail-btn is-active">◈</button><button class="rail-btn">◈</button>
+      <button class="rail-btn">▤</button><button class="rail-btn">✉</button><div class="rail-spacer"></div><button class="rail-btn">⚙</button><div class="avatar">A</div></nav>
+    <main class="main">
+      <div class="topbar"><div class="app-name"><svg class="mark" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-label="Prysm"><path d="M4 26 16 5l12 21H4Zm12-21v21M4 26l18-10"/></svg> Todo list</div><div class="spacer"></div>
+        <button class="icon-btn" title="Save">☆</button><button class="btn sm">Share</button><button class="btn primary sm">Clone</button></div>
+      <div class="pub"><div class="pub-inner">
+        <div class="pub-hero">
+          <div class="pub-shot"></div>
+          <div class="pub-body">
+            <div style="flex:1">
+              <div class="eyebrow" style="margin-bottom:8px"><span class="bar"></span> todo list <span class="bar"></span></div>
+              <h1>Todo list</h1>
+              <p>A minimal todo app with due dates, reminders and a heatmap of completed days. Built with prysm build in about a minute.</p>
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <span class="tag">GLM 4.6</span><span class="tag">React</span><span class="tag">local storage</span>
+                <span class="status ok"><span class="dot"></span> live</span>
+              </div>
+            </div>
+            <div style="text-align:right">
+              <div class="micro">published</div>
+              <div style="font-size:var(--fs-sm);margin-top:4px">2 hours ago</div>
+              <div class="mini-av" style="margin:10px 0 0 auto;width:28px;height:28px"></div>
+              <div style="font-size:var(--fs-xs);color:var(--tx-3);margin-top:6px">@alessio</div>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;gap:var(--sp-4);margin-top:var(--sp-5)">
+          <div class="live-card" style="flex:1"><div class="micro">files</div><div class="kv"><span class="k">components</span><span class="v">6</span></div><div class="kv"><span class="k">lines</span><span class="v">412</span></div></div>
+          <div class="live-card" style="flex:1"><div class="micro">stack</div><div class="kv"><span class="k">runtime</span><span class="v">Workers</span></div><div class="kv"><span class="k">origin</span><span class="v">app.prysm.sh</span></div></div>
+          <div class="live-card" style="flex:1"><div class="micro">license</div><div class="kv"><span class="k">type</span><span class="v">MIT</span></div><div class="kv"><span class="k">cloneable</span><span class="v">yes</span></div></div>
+        </div>
+      </div></div>
+    </main>
+  </div>
+</section>
+
+<!-- ═══════════════ DISCOVER ═══════════════ -->
+<section class="screen" id="screen-discover">
+  <div class="app">
+    <nav class="rail"><div class="rail-logo"><svg class="mark" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-label="Prysm"><path d="M4 26 16 5l12 21H4Zm12-21v21M4 26l18-10"/></svg></div><button class="rail-btn">✦</button><button class="rail-btn is-active">◈</button>
+      <button class="rail-btn">▤</button><button class="rail-btn">✉</button><div class="rail-spacer"></div><button class="rail-btn">⚙</button><div class="avatar">A</div></nav>
+    <main class="main">
+      <div class="topbar"><div class="app-name"><svg class="mark" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-label="Prysm"><path d="M4 26 16 5l12 21H4Zm12-21v21M4 26l18-10"/></svg> Discover</div><div class="spacer"></div><button class="picker">trending this week <span class="caret">▾</span></button></div>
+      <div class="page"><div class="page-inner">
+        <div class="page-head"><div><h1>Apps people shipped</h1><p>Clone any of these and make it yours.</p></div><div class="spacer"></div><button class="btn">Publish an app</button></div>
+        <div class="filters"><span class="filter on">Trending</span><span class="filter">Newest</span><span class="filter">Productivity</span><span class="filter">Utilities</span><span class="filter">Games</span></div>
+        <div class="grid">
+          <div class="tile"><div class="shot"></div><div class="info"><h3>Habit streaks</h3><p>Daily check-in with a year of heatmap</p><div class="row"><span class="meta">GLM 4.6</span><span class="who"><span class="mini-av"></span> ali</span></div></div></div>
+          <div class="tile"><div class="shot"></div><div class="info"><h3>Split the bill</h3><p>Shared expenses with settle-up</p><div class="row"><span class="meta">GLM 4.6</span><span class="who"><span class="mini-av"></span> mia</span></div></div></div>
+          <div class="tile"><div class="shot"></div><div class="info"><h3>Plant tracker</h3><p>Watering schedule per pot</p><div class="row"><span class="meta">GLM 4.6</span><span class="who"><span class="mini-av"></span> jonas</span></div></div></div>
+          <div class="tile"><div class="shot"></div><div class="info"><h3>Recipe pantry</h3><p>What's in, what's out</p><div class="row"><span class="meta">GLM 4.6</span><span class="who"><span class="mini-av"></span> sara</span></div></div></div>
+          <div class="tile"><div class="shot"></div><div class="info"><h3>Reading list</h3><p>Highlights and quotes</p><div class="row"><span class="meta">GLM 4.6</span><span class="who"><span class="mini-av"></span> ken</span></div></div></div>
+          <div class="tile"><div class="shot"></div><div class="info"><h3>Shift planner</h3><p>Swap shifts with your team</p><div class="row"><span class="meta">GLM 4.6</span><span class="who"><span class="mini-av"></span> noa</span></div></div></div>
+        </div>
+      </div></div>
+    </main>
+  </div>
+</section>
+
+<!-- ═══════════════ COMMAND PALETTE ═══════════════ -->
+<section class="screen" id="screen-palette">
+  <div class="app">
+    <nav class="rail"><div class="rail-logo"><svg class="mark" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-label="Prysm"><path d="M4 26 16 5l12 21H4Zm12-21v21M4 26l18-10"/></svg></div><button class="rail-btn">✦</button><button class="rail-btn">◈</button>
+      <button class="rail-btn">▤</button><button class="rail-btn">✉</button><div class="rail-spacer"></div><button class="rail-btn">⚙</button><div class="avatar">A</div></nav>
+    <main class="main">
+      <div class="topbar"><div class="app-name"><svg class="mark" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-label="Prysm"><path d="M4 26 16 5l12 21H4Zm12-21v21M4 26l18-10"/></svg> Command palette</div></div>
+      <div class="palette-wrap">
+        <div class="palette">
+          <input placeholder="Type a command or search apps…" value="dep" />
+          <div class="group">
+            <div class="gl micro">actions</div>
+            <div class="cmd sel"><span class="ic">▤</span><span>Deploy current app</span><span class="kbd">⌘D</span></div>
+            <div class="cmd"><span class="ic">⧉</span><span>Duplicate app</span><span class="kbd">⌘⇧D</span></div>
+            <div class="cmd"><span class="ic">⇄</span><span>Deploy to another domain</span></div>
+          </div>
+          <div class="group">
+            <div class="gl micro">apps</div>
+            <div class="cmd"><span class="ic">◈</span><span>Todo list</span><span class="status"><span class="dot pulse"></span> building</span></div>
+            <div class="cmd"><span class="ic">◈</span><span>Invoice tracker</span><span class="status ok"><span class="dot"></span> ready</span></div>
+          </div>
+          <div class="group">
+            <div class="gl micro">settings</div>
+            <div class="cmd"><span class="ic">⚙</span><span>Switch model</span><span class="kbd">⌘M</span></div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</section>
+
+<!-- ═══════════════ SETTINGS ═══════════════ -->
+<section class="screen" id="screen-settings">
+  <div class="app">
+    <nav class="rail"><div class="rail-logo"><svg class="mark" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-label="Prysm"><path d="M4 26 16 5l12 21H4Zm12-21v21M4 26l18-10"/></svg></div><button class="rail-btn">✦</button><button class="rail-btn">◈</button>
+      <button class="rail-btn">▤</button><button class="rail-btn">✉</button><div class="rail-spacer"></div><button class="rail-btn is-active">⚙</button><div class="avatar">A</div></nav>
+    <main class="main">
+      <div class="topbar"><div class="app-name"><svg class="mark" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-label="Prysm"><path d="M4 26 16 5l12 21H4Zm12-21v21M4 26l18-10"/></svg> Settings</div></div>
+      <div class="settings">
+        <div class="settings-nav">
+          <button class="item on">Models</button><button class="item">Account</button><button class="item">Appearance</button>
+          <button class="item">API keys</button><button class="item">Domains</button><button class="item">Billing</button><button class="item">Sign out</button>
+        </div>
+        <div class="settings-body"><div class="settings-inner">
+          <div class="group"><h3>Models</h3><p class="desc">Which model writes your apps. Change it per session if you like.</p>
+            <div class="setting"><div class="txt"><b>Default model</b><span>Used by the agent for blueprint, code and chat</span></div><button class="picker">GLM 4.6 <span class="caret">▾</span></button></div>
+            <div class="setting"><div class="txt"><b>Fallback model</b><span>Takes over when the primary provider is unreachable</span></div><button class="picker">GPT-OSS 120B <span class="caret">▾</span></button></div>
+            <div class="setting"><div class="txt"><b>Reasoning effort</b><span>Higher effort plans more carefully and costs more tokens</span></div><button class="picker">High <span class="caret">▾</span></button></div>
+          </div>
+          <div class="group"><h3>Appearance</h3><p class="desc">How dense the workspace is.</p>
+            <div class="setting"><div class="txt"><b>Density</b><span>Compact fits more code on screen</span></div><button class="picker">Comfortable <span class="caret">▾</span></button></div>
+            <div class="setting"><div class="txt"><b>Theme</b><span>Studio dark is the default</span></div><button class="picker">Dark <span class="caret">▾</span></button></div>
+          </div>
+          <div class="group"><h3>Provider keys</h3><p class="desc">Stored encrypted and never shipped to the browser.</p>
+            <div class="field"><span class="tag on">Zhipu</span><input value="••••••••••••••••••••••••••••" readonly /><button class="btn sm">Replace</button></div>
+            <div class="field"><span class="tag">Cloudflare</span><input value="••••••••••••••••••••••••••••" readonly /><button class="btn sm">Replace</button></div>
+            <div class="field"><span class="tag">OpenRouter</span><input placeholder="sk-or-v1-…" /><button class="btn sm">Add</button></div>
+          </div>
+          <div class="group"><h3>Behaviour</h3><p class="desc">How the agent works while it builds.</p>
+            <div class="setting"><div class="txt"><b>Auto-deploy preview</b><span>Publish every passing build to your preview origin</span></div><div class="switch on"><i></i></div></div>
+            <div class="setting"><div class="txt"><b>Repair loop</b><span>Let the agent fix failing tests without asking</span></div><div class="switch on"><i></i></div></div>
+            <div class="setting"><div class="txt"><b>Email on deploy</b><span>Send a note when an app goes live</span></div><div class="switch"><i></i></div></div>
+          </div>
+        </div></div>
+      </div>
+    </main>
+  </div>
+</section>
+
+<!-- ═══════════════ MOBILE ═══════════════ -->
+<section class="screen" id="screen-mobile">
+  <div class="app" style="grid-template-columns:1fr">
+    <div class="phones">
+      <!-- phone: home -->
+      <div class="phone">
+        <div class="notch"><i></i></div>
+        <div class="screen-area">
+          <div class="m-top"><span class="mark" style="width:22px;height:22px">path d="M4 26 16 5l12 21H4Zm12-21v21M4 26l18-10"/></span><div class="spacer"></div>
+            <span class="meta">GLM 4.6</span><div class="avatar" style="width:26px;height:26px;font-size:10px">A</div></div>
+          <div class="m-pad">
+            <h2 class="m-hero">Describe it.<br /><span class="grad">Ship it in minutes.</span></h2>
+            <p style="color:var(--tx-2);font-size:12.5px;margin:0 0 12px">An agent writes the code and repairs it in a loop.</p>
+          </div>
+          <div class="m-composer">
+            <div style="color:var(--tx-3);font-size:13px;min-height:44px">A todo list app with due dates…</div>
+            <div style="display:flex;align-items:center;gap:6px;margin-top:8px">
+              <div class="tool">＋</div><div class="spacer"></div><button class="btn primary sm">Build</button></div>
+          </div>
+          <div class="m-pad" style="padding-top:4px">
+            <div class="micro" style="margin-bottom:8px">recent</div>
+            <div class="rec" style="margin-bottom:8px"><b>Todo list</b><span>building · 2m ago</span></div>
+            <div class="rec"><b>Invoice tracker</b><span>ready · 1h ago</span></div>
+          </div>
+        </div>
+        <div class="tabbar"><div class="tab on"><span class="ic">✦</span>Build</div><div class="tab"><span class="ic">◈</span>Discover</div>
+          <div class="tab"><span class="ic">▤</span>Apps</div><div class="tab"><span class="ic">⚙</span>You</div></div>
+      </div>
+
+      <!-- phone: chat -->
+      <div class="phone">
+        <div class="notch"><i></i></div>
+        <div class="screen-area">
+          <div class="m-top"><span style="color:var(--tx-3)">‹</span><strong style="font-size:13.5px">Todo list</strong><div class="spacer"></div>
+            <span class="status"><span class="dot pulse"></span></span></div>
+          <div class="m-msg"><div class="av me">A</div><div class="txt">create a todo list app with due dates</div></div>
+          <div class="m-msg"><div class="av ai">✦</div><div class="txt" style="flex:1">
+            <div style="font-weight:600;font-size:12px;margin-bottom:6px">prysm build · GLM 4.6</div>
+            <div class="panel" style="margin-top:0">
+              <div class="panel-row"><span class="st done">✓</span><span class="lbl">Scaffold</span></div>
+              <div class="panel-row"><span class="st done">✓</span><span class="lbl">Todo model</span></div>
+              <div class="panel-row"><span class="st run">◆</span><span class="lbl">Reminders</span><span class="wave"><i></i><i></i><i></i><i></i></span></div>
+              <div class="panel-row"><span class="st todo">○</span><span class="lbl muted">Run &amp; repair</span></div>
+            </div>
+            <div class="fileprog" style="border:none;padding:8px 0 0"><span class="nm" style="font-size:11px">src/reminders.ts</span><span class="bar"><i style="width:62%"></i></span></div>
+            <div class="actions"><button class="btn sm">Retry step</button><button class="btn sm ghost">Branch</button></div>
+          </div></div>
+        </div>
+        <div style="padding:10px 12px;border-top:1px solid var(--line-1)">
+          <div class="composer" style="box-shadow:none;border-radius:var(--r-md)">
+            <div style="padding:10px;color:var(--tx-3);font-size:12.5px">Ask for a change…</div>
+            <div style="display:flex;gap:6px;padding:0 8px 8px"><div class="spacer"></div><button class="btn primary sm">Send</button></div>
+          </div>
+        </div>
+        <div class="tabbar"><div class="tab on"><span class="ic">✦</span>Build</div><div class="tab"><span class="ic">◈</span>Discover</div>
+          <div class="tab"><span class="ic">▤</span>Apps</div><div class="tab"><span class="ic">⚙</span>You</div></div>
+      </div>
+
+      <!-- phone: workspace -->
+      <div class="phone">
+        <div class="notch"><i></i></div>
+        <div class="screen-area">
+          <div class="m-top"><span style="color:var(--tx-3)">‹</span><strong style="font-size:13.5px">TodoList.tsx</strong><div class="spacer"></div>
+            <span class="status ok"><span class="dot"></span> live</span></div>
+          <div style="display:flex;border-bottom:1px solid var(--line-1)">
+            <div style="flex:1;padding:9px 0;text-align:center;font-size:11.5px;color:var(--tx-3);border-bottom:2px solid transparent">Code</div>
+            <div style="flex:1;padding:9px 0;text-align:center;font-size:11.5px;color:var(--tx-1);border-bottom:2px solid var(--accent)">Preview</div>
+          </div>
+          <div class="mock-app" style="margin:12px;border-radius:var(--r-md)">
+            <h4>Today</h4>
+            <div class="todo done" style="font-size:12.5px"><span class="box"></span><span>Renew domain</span></div>
+            <div class="todo" style="font-size:12.5px"><span class="box"></span><span>Ship pricing page</span></div>
+            <div class="todo" style="font-size:12.5px"><span class="box"></span><span>Book flights</span></div>
+            <h4 style="margin-top:16px">Upcoming</h4>
+            <div class="todo" style="font-size:12.5px"><span class="box"></span><span>Quarterly review</span></div>
+          </div>
+          <div style="position:absolute;bottom:64px;left:12px;right:12px;display:flex;gap:8px">
+            <button class="btn sm" style="flex:1">Files</button><button class="btn sm" style="flex:1">Terminal</button><button class="btn primary sm" style="flex:1">Deploy</button>
+          </div>
+        </div>
+        <div class="tabbar"><div class="tab on"><span class="ic">✦</span>Build</div><div class="tab"><span class="ic">◈</span>Discover</div>
+          <div class="tab"><span class="ic">▤</span>Apps</div><div class="tab"><span class="ic">⚙</span>You</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+  const tabs = document.getElementById('tabs');
+  tabs.addEventListener('click', (event) => {
+    const button = event.target.closest('button[data-screen]');
+    if (!button) return;
+    for (const b of tabs.querySelectorAll('button')) b.setAttribute('aria-pressed', String(b === button));
+    for (const section of document.querySelectorAll('.screen')) section.classList.toggle('is-active', section.id === `screen-${button.dataset.screen}`);
+  });
+  document.getElementById('themeBtn').addEventListener('click', () => {
+    const root = document.documentElement;
+    root.dataset.theme = root.dataset.theme === 'dark' ? 'light' : 'dark';
+  });
+  const densityBtn = document.getElementById('densityBtn');
+  densityBtn.addEventListener('click', () => {
+    const root = document.documentElement;
+    const next = root.dataset.density === 'compact' ? 'comfortable' : 'compact';
+    root.dataset.density = next;
+    densityBtn.textContent = `density: ${next}`;
+  });
+  // trace disclosure
+  for (const head of document.querySelectorAll('.trace-head')) {
+    head.addEventListener('click', () => head.parentElement.classList.toggle('open'));
+  }
+</script>
+</body>
+</html>

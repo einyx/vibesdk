@@ -66,9 +66,23 @@ const PROVIDER_META: Record<
 		label: 'Cloudflare',
 		icon: <CloudflareLogo variant="glyph" className="h-5 w-5" />,
 	},
+	logto: {
+		label: 'prysm.sh',
+		icon: (
+			<svg
+				className="h-5 w-5"
+				fill="none"
+				viewBox="0 0 32 32"
+				stroke="currentColor"
+				strokeWidth={2.5}
+			>
+				<path d="M4 26 16 5l12 21H4Zm12-21v21M4 26l18-10" />
+			</svg>
+		),
+	},
 };
 
-const PROVIDER_ORDER: OAuthProvider[] = ['github', 'google', 'cloudflare'];
+const PROVIDER_ORDER: OAuthProvider[] = ['github', 'google', 'cloudflare', 'logto'];
 
 export function ConnectedAccounts() {
 	const { authProviders } = useAuth();

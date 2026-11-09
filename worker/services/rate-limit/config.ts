@@ -82,8 +82,10 @@ export const DEFAULT_RATE_LIMIT_SETTINGS: RateLimitSettings = {
 	appCreation: {
 		enabled: true,
 		store: RateLimitStore.DURABLE_OBJECT,
-		limit: 3,
-		dailyLimit: 3,
+		// Private deployment: the old 3/day tripped during a debugging loop
+		// where every attempt died before the first model call.
+		limit: 100,
+		dailyLimit: 100,
 		period: 24 * 60 * 60, // 24 hours
 	},
 	llmCalls: {

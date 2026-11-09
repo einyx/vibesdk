@@ -47,6 +47,7 @@ export const AppFiltersForm: React.FC<AppFiltersFormProps> = ({
 					/>
 					<Input
 						type="text"
+						aria-label={searchPlaceholder}
 						placeholder={searchPlaceholder}
 						value={searchQuery}
 						onChange={(e) => onSearchChange(e.target.value)}
