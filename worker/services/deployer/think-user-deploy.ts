@@ -197,15 +197,20 @@ export async function deployThinkBundleToUserAccount(input: {
 }
 
 /**
- * Deploy a think bundle to the platform's Workers-for-Platforms dispatch
- * namespace using platform credentials. No workers.dev enablement — the
- * app is reachable through the dispatch custom domain (preview domain).
+ * Deploy a think bundle to the platform using platform credentials.
+ *
+ * With a Workers-for-Platforms dispatch namespace the app is published into
+ * that namespace and reached through the dispatch custom domain. Without one
+ * (a deployment on the free plan, where WfP is not available) the bundle is
+ * published as a plain Worker and reached on the account's workers.dev
+ * subdomain — same code, a different address.
  */
 export async function deployThinkBundleToPlatform(input: {
 	accountId: string;
 	apiToken: string;
-	dispatchNamespace: string;
+	dispatchNamespace?: string;
 	previewDomain: string;
+	workersSubdomain?: string;
 	appName: string;
 	bundle: BranchDeploymentBundle;
 	enableAI?: boolean;
@@ -214,8 +219,14 @@ export async function deployThinkBundleToPlatform(input: {
 	const deployer = new WorkerDeployer(input.accountId, input.apiToken);
 	await deployArtifacts(deployer, artifacts, input.dispatchNamespace);
 
+	const host = input.dispatchNamespace
+		? input.previewDomain
+		: input.workersSubdomain
+			? `${input.workersSubdomain}.workers.dev`
+			: input.previewDomain;
+
 	return {
 		deploymentId: artifacts.scriptName,
-		deploymentUrl: `https://${artifacts.scriptName}.${input.previewDomain}`,
+		deploymentUrl: `https://${artifacts.scriptName}.${host}`,
 	};
 }

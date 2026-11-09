@@ -1012,10 +1012,17 @@ export class ThinkCodingBehavior
 			if (!accountId || !apiToken) {
 				throw new Error('CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN must be set in environment');
 			}
+			// A dispatch namespace is the Workers-for-Platforms route. On a
+			// deployment without WfP it is absent, and the bundle is published
+			// as a plain Worker on the account's workers.dev subdomain instead.
 			const dispatchNamespace = (this.env as unknown as { DISPATCH_NAMESPACE?: string })
-				.DISPATCH_NAMESPACE;
-			if (!dispatchNamespace) {
-				throw new Error('DISPATCH_NAMESPACE not found in environment variables, cannot deploy without dispatch namespace');
+				.DISPATCH_NAMESPACE?.trim() || undefined;
+			const workersSubdomain = (this.env as unknown as { CLOUDFLARE_WORKERS_SUBDOMAIN?: string })
+				.CLOUDFLARE_WORKERS_SUBDOMAIN?.trim() || undefined;
+			if (!dispatchNamespace && !workersSubdomain) {
+				throw new Error(
+					'Neither DISPATCH_NAMESPACE nor CLOUDFLARE_WORKERS_SUBDOMAIN is set, so there is nowhere to publish the app.',
+				);
 			}
 
 			const branch = this.state.currentBranch || 'main';
@@ -1029,6 +1036,7 @@ export class ThinkCodingBehavior
 				accountId,
 				apiToken,
 				dispatchNamespace,
+				workersSubdomain,
 				previewDomain: getPreviewDomain(this.env),
 				appName: this.state.blueprint.title || this.state.projectName || `vibe-${instanceId}`,
 				bundle,

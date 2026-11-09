@@ -17,6 +17,7 @@ declare namespace Cloudflare {
 		CF_ACCESS_ID: string;
 		CF_ACCESS_SECRET: string;
 		CLOUDFLARE_AI_GATEWAY_URL: string;
+		CLOUDFLARE_WORKERS_SUBDOMAIN: string;
 		CUSTOM_PREVIEW_DOMAIN: string;
 		GOOGLE_AI_STUDIO_API_KEY: string;
 		GOOGLE_CLIENT_ID: string;

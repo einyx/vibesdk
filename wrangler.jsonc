@@ -82,7 +82,7 @@
 		"binding": "BROWSER",
 		"remote": true
 	},
-    // // // // // // // // // // // // // // // // // // "dispatch_namespaces": [
+    // // // // // // // // // // // // // // // // // // // // "dispatch_namespaces": [
  //     {
  //         "binding": "DISPATCHER",
  //         "namespace": "orange-build-default-namespace",
@@ -202,6 +202,9 @@
         "TEMPLATES_REPOSITORY": "https://github.com/cloudflare/vibesdk-templates",
         "DISPATCH_NAMESPACE": "",
         "CLOUDFLARE_AI_GATEWAY": "vibesdk-gateway",
+        // The account's workers.dev subdomain: where a published app lives when
+        // the deployment has no Workers-for-Platforms dispatch namespace.
+        "CLOUDFLARE_WORKERS_SUBDOMAIN": "alessio-2b5",
         "ARTIFACTS_NAMESPACE": "vibesdk-production",
         "PLATFORM_CAPABILITIES": {
             "features": {
