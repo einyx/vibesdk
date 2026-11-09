@@ -15,6 +15,7 @@ import { generateNanoId } from '../../../utils/idGenerator';
 import { generateProjectName } from '../../utils/templateCustomizer';
 import { deriveShortTitle } from '../../utils/titleGenerator';
 import { PreviewType, TemplateDetails } from 'worker/services/sandbox/sandboxTypes';
+import { getSandboxService } from 'worker/services/sandbox/factory';
 import {
 	buildSpacePreviewPath,
 	getPreviewDomain,
@@ -49,6 +50,10 @@ type ThinkAgentStub = {
 type SpaceRpcStub = {
 	writeFile: (path: string, content: string) => Promise<unknown>;
 	readFile: (path: string, opts?: { offset?: number; limit?: number }) => Promise<string>;
+	readDir: (
+		dir?: string,
+		opts?: { limit?: number; offset?: number },
+	) => Promise<{ path: string; name: string; type: string; size: number }[]>;
 	gitCommit: (
 		msg: string,
 		author?: { name: string; email: string },
@@ -364,8 +369,127 @@ export class ThinkCodingBehavior
 	 * SpaceDO branch and return its preview URL.
 	 */
 	async deployToSandbox(): Promise<PreviewType | null> {
+		// A deployment that hosts previews on the runner (the k3s sandbox
+		// stack) publishes there instead of loading the app into this
+		// Durable Object — the in-process path needs a paid runtime.
+		if (this.env.SANDBOX_SERVICE_TYPE === 'runner') {
+			return this.deployToRunner();
+		}
 		const url = await this.deployCurrentBranch();
 		return url ? { previewURL: url } : null;
+	}
+
+	/**
+	 * Publish the app to the runner and return its preview URL.
+	 *
+	 * The app's source tree is read from the space and handed to the runner,
+	 * which runs the app's own dev server (`wrangler dev` for a Workers app)
+	 * and serves it under the runner's host.
+	 */
+	private async deployToRunner(): Promise<PreviewType | null> {
+		const instanceId = this.getAgentId().toLowerCase().replace(/[^a-z0-9-]/g, '-');
+		try {
+			const files = await this.collectBranchFiles();
+			if (files.length === 0) {
+				this.logger.warn('No files to publish to the runner', { instanceId });
+				return null;
+			}
+
+			const service = getSandboxService(
+				this.state.sessionId ?? instanceId,
+				this.getAgentId(),
+			);
+			const created = await service.createInstance({
+				files,
+				projectName:
+					this.state.blueprint?.title ?? this.state.projectName ?? instanceId,
+				initCommand: 'npx wrangler dev --port $PORT --ip 127.0.0.1',
+				envVars: {},
+			});
+
+			if (!created.success) {
+				this.logger.warn('The runner refused the instance', {
+					instanceId,
+					error: created.error,
+				});
+				return null;
+			}
+
+			// Retire the previous instance of this app: each publish starts a
+			// fresh dev server, so the old one would only hold memory.
+			try {
+				const listed = await service.listAllInstances();
+				const projectName =
+					this.state.blueprint?.title ?? this.state.projectName ?? instanceId;
+				const stale = (listed.instances ?? []).filter(
+					(instance) =>
+						instance.runId !== created.runId &&
+						instance.directory.includes(projectName),
+				);
+				for (const instance of stale) {
+					await service
+						.shutdownInstance(instance.runId)
+						.catch(() => undefined);
+				}
+			} catch (error) {
+				this.logger.debug('Could not retire the previous instances', error);
+			}
+
+			const url = created.previewURL ?? created.runId;
+			this.broadcast(WebSocketMessageResponses.DEPLOYMENT_COMPLETED, {
+				previewURL: url,
+			});
+			return { previewURL: url };
+		} catch (error) {
+			this.logger.error('Publishing to the runner failed', error);
+			this.broadcast(WebSocketMessageResponses.DEPLOYMENT_FAILED, {
+				error: error instanceof Error ? error.message : String(error),
+			});
+			return null;
+		}
+	}
+
+	/** The branch's files, as the runner wants them. */
+	private async collectBranchFiles(): Promise<
+		{ filePath: string; fileContents: string }[]
+	> {
+		const collected: { filePath: string; fileContents: string }[] = [];
+		const seen = new Set<string>();
+
+		const walk = async (dir?: string): Promise<void> => {
+			const entries = await this.callSpace((space) => space.readDir(dir));
+			for (const entry of entries) {
+				if (entry.type === 'directory') {
+					await walk(entry.path);
+					continue;
+				}
+				// The app's own bookkeeping never ships.
+				if (
+					entry.path.startsWith('/.git/') ||
+					entry.path.startsWith('/.afs/') ||
+					entry.path === '/.git' ||
+					entry.path === '/.afs'
+				) {
+					continue;
+				}
+				const path = entry.path.replace(/^\//, '');
+				if (!path || seen.has(path)) {
+					continue;
+				}
+				seen.add(path);
+				try {
+					const content = await this.callSpace((space) =>
+						space.readFile(entry.path),
+					);
+					collected.push({ filePath: path, fileContents: content });
+				} catch {
+					// A file that cannot be read is skipped, not fatal.
+				}
+			}
+		};
+
+		await walk();
+		return collected;
 	}
 
 	private async getPublicOrigin(): Promise<string> {

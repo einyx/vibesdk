@@ -82,7 +82,7 @@
 		"binding": "BROWSER",
 		"remote": true
 	},
-    // // // // // // // // // // // // // // // // // // // // "dispatch_namespaces": [
+    // // // // // // // // // // // // // // // // // // // // // "dispatch_namespaces": [
  //     {
  //         "binding": "DISPATCHER",
  //         "namespace": "orange-build-default-namespace",
@@ -205,6 +205,10 @@
         // The account's workers.dev subdomain: where a published app lives when
         // the deployment has no Workers-for-Platforms dispatch namespace.
         "CLOUDFLARE_WORKERS_SUBDOMAIN": "alessio-2b5",
+        // Previews are hosted by the runner on the k3s cluster (the sandbox
+        // stack), not by this worker: the in-process path needs a paid runtime.
+        "SANDBOX_SERVICE_TYPE": "runner",
+        "SANDBOX_SERVICE_URL": "https://runner.prysm.sh",
         "ARTIFACTS_NAMESPACE": "vibesdk-production",
         "PLATFORM_CAPABILITIES": {
             "features": {

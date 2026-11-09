@@ -1768,6 +1768,7 @@ class CloudflareDeploymentManager {
 			'OPENROUTER_API_KEY',
 			'ZHIPU_API_KEY',
 			'GLM_API_KEY',
+			'SANDBOX_SERVICE_API_KEY',
 			'GROQ_API_KEY',
 			'GOOGLE_CLIENT_SECRET',
 			'GOOGLE_CLIENT_ID',
