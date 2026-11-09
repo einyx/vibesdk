@@ -43,6 +43,10 @@ temp/
 templates
 debugging.ipynb
 
+# The template catalog and zips ship with the worker as static assets
+# (public/templates/); see worker/services/sandbox/BaseSandboxService.ts.
+!public/templates
+
 #bun.lock
 #*.lock
 

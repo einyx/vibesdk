@@ -72,12 +72,35 @@ export abstract class BaseSandboxService {
     // ==========================================
   
     /**
+     * Fetch one file of the template store: the catalog JSON or a template
+     * zip. R2 (`TEMPLATES_BUCKET`) is the source of truth when the account
+     * carries the binding; the no-purchase variant runs without it, so the
+     * catalog and the zips ship as worker static assets under /templates/
+     * and are read through ASSETS instead. The binding wins whenever it is
+     * present, so enabling R2 later changes nothing else.
+     */
+    private static async getTemplateFile(
+        key: string
+    ): Promise<{ arrayBuffer(): Promise<ArrayBuffer>; json(): Promise<unknown> } | null> {
+        if (env.TEMPLATES_BUCKET) {
+            return (await env.TEMPLATES_BUCKET.get(key)) ?? null;
+        }
+        const response = await env.ASSETS.fetch(new Request(`https://assets.local/templates/${key}`));
+        // A miss under single-page-application asset serving answers with
+        // the SPA's index.html at 200; the content type tells the two apart.
+        if (!response.ok || (response.headers.get('content-type') ?? '').includes('text/html')) {
+            return null;
+        }
+        return response;
+    }
+
+    /**
      * List all available templates
      * Returns: { success: boolean, templates: [...], count: number, error?: string }
      */
     static async listTemplates(): Promise<TemplateListResponse> {
         try {
-            const response = await env.TEMPLATES_BUCKET.get('template_catalog.json');
+            const response = await BaseSandboxService.getTemplateFile('template_catalog.json');
             if (response === null) {
                 throw new Error(`Failed to fetch template catalog: Template catalog not found`);
             }
@@ -125,15 +148,16 @@ export abstract class BaseSandboxService {
                     templateDetails: templateDetailsCache[templateName]
                 };
             }
-            // Download template zip from R2
+            // Fetch the template zip from the store (R2, or the bundled
+            // static assets when the bucket binding is absent)
             const downloadUrl = downloadDir ? `${downloadDir}/${templateName}.zip` : `${templateName}.zip`;
-            const r2Object = await env.TEMPLATES_BUCKET.get(downloadUrl);
+            const templateFile = await BaseSandboxService.getTemplateFile(downloadUrl);
               
-            if (!r2Object) {
-                throw new Error(`Template '${templateName}' not found in bucket`);
+            if (!templateFile) {
+                throw new Error(`Template '${templateName}' not found`);
             }
         
-            const zipData = await r2Object.arrayBuffer();
+            const zipData = await templateFile.arrayBuffer();
             
             // Extract all files in memory
             const allFiles = ZipExtractor.extractFiles(zipData);
