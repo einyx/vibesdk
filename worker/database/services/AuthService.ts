@@ -13,6 +13,7 @@ import { PasswordService } from '../../utils/passwordService';
 import { GoogleOAuthProvider } from '../../services/oauth/google';
 import { GitHubOAuthProvider } from '../../services/oauth/github';
 import { CloudflareConnectOAuthProvider } from '../../services/oauth/cloudflare-connect';
+import { LogtoOAuthProvider } from '../../services/oauth/logto';
 import { BaseOAuthProvider } from '../../services/oauth/base';
 import { readOAuthNonceCookie } from '../../utils/oauthCookie';
 import { 
@@ -321,6 +322,8 @@ export class AuthService extends BaseService {
                 return GitHubOAuthProvider.create(this.env, url);
             case 'cloudflare':
                 return CloudflareConnectOAuthProvider.createForLogin(this.env, url);
+            case 'logto':
+                return LogtoOAuthProvider.create(this.env, url);
             default:
                 throw new SecurityError(
                     SecurityErrorType.INVALID_INPUT,

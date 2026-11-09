@@ -79,6 +79,6 @@ export type ResetPasswordRequest = z.infer<typeof resetPasswordSchema>;
 /**
  * OAuth provider schema
  */
-export const oauthProviderSchema = z.enum(['google', 'github', 'cloudflare']);
+export const oauthProviderSchema = z.enum(['google', 'github', 'cloudflare', 'logto']);
 
 export type OAuthProviderParam = z.infer<typeof oauthProviderSchema>;

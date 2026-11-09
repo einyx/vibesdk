@@ -281,6 +281,7 @@ export interface AuthProvidersResponseData {
     google: boolean;
     github: boolean;
     cloudflare: boolean;
+    logto: boolean;
     email: boolean;
   };
   hasOAuth: boolean;
