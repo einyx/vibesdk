@@ -454,8 +454,14 @@ export class CodingAgentController extends BaseController {
             // Previews host the generated app inside a Durable Object Facet,
             // loaded through the Worker Loader. Both are Workers Paid features,
             // so a deployment without the LOADER binding cannot host a preview
-            // at all. Say so plainly instead of failing as a generic 500.
-            if (!('LOADER' in env) || !(env as { LOADER?: unknown }).LOADER) {
+            // in-process — unless the deployment hosts previews on the runner
+            // (the k3s sandbox stack), which needs neither.
+            const hostsPreviewsOnRunner =
+                env.SANDBOX_SERVICE_TYPE === 'runner';
+            if (
+                !hostsPreviewsOnRunner &&
+                (!('LOADER' in env) || !(env as { LOADER?: unknown }).LOADER)
+            ) {
                 return CodingAgentController.createErrorResponse<AgentPreviewResponse>(
                     'App previews are not available on this deployment: hosting a preview needs Workers for Platforms (a paid plan). The code is still written and can be deployed to Cloudflare.',
                     503,

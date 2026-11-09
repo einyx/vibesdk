@@ -4,7 +4,7 @@ import { WorkerDeployer } from './deployer';
 import type { AssetConfig, WorkerBinding, WorkerObservability } from './types';
 import { createAssetManifest } from './utils';
 
-const APP_BINDING = 'VIBE_APP';
+export const APP_BINDING = 'VIBE_APP';
 const OBSERVABILITY: WorkerObservability = {
 	enabled: false,
 	head_sampling_rate: 1,
@@ -73,7 +73,7 @@ interface ThinkBundleArtifacts {
 	migration: { tag: string; new_sqlite_classes: string[] }[] | undefined;
 }
 
-async function buildThinkBundleArtifacts(
+export async function buildThinkBundleArtifacts(
 	bundle: BranchDeploymentBundle,
 	appName: string,
 	enableAI: boolean,

@@ -82,7 +82,7 @@
 		"binding": "BROWSER",
 		"remote": true
 	},
-    // // // // // // // // // // // // // // // // // // // // // "dispatch_namespaces": [
+    // // // // // // // // // // // // // // // // // // // // // // // // // // // // "dispatch_namespaces": [
  //     {
  //         "binding": "DISPATCHER",
  //         "namespace": "orange-build-default-namespace",
@@ -191,11 +191,6 @@
         {
             "pattern": "apps.prysm.sh",
             "custom_domain": true
-        },
-        {
-            "pattern": "*apps.prysm.sh/*",
-            "custom_domain": false,
-            "zone_id": "e5edb1105999e18a26f1e2354c3fa814"
         }
     ],
 	"vars": {
@@ -209,6 +204,13 @@
         // stack), not by this worker: the in-process path needs a paid runtime.
         "SANDBOX_SERVICE_TYPE": "runner",
         "SANDBOX_SERVICE_URL": "https://runner.prysm.sh",
+        // The runner serves previews under its own host
+        // (runner.prysm.sh/p/<instance>), so preview-domain migration must
+        // treat *.prysm.sh as already-current and pass those URLs through.
+        // Empty: the previews live on the k3s runner (runner.prysm.sh), not
+        // on a wildcard route of the origin zone — a wildcard here would
+        // shadow the auth origin.
+        "CUSTOM_PREVIEW_DOMAIN": "",
         "ARTIFACTS_NAMESPACE": "vibesdk-production",
         "PLATFORM_CAPABILITIES": {
             "features": {

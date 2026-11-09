@@ -1167,10 +1167,29 @@ class CloudflareDeploymentManager {
                 }
 			}
 
-			expectedRoutes = [
-				{ pattern: customDomain, custom_domain: true },
-				wildcardRoute,
-			];
+			// The wildcard route is only ever wanted when a *separate* preview
+			// domain has its own zone. On the same zone as the custom domain it
+			// hijacks that zone's apex and every subdomain — which, for a
+			// deployment that shares a zone with the auth origin, means the
+			// worker answers 404 for the whole origin.
+			const wildcardHasOwnZone =
+				!!(customPreviewDomain &&
+					customPreviewDomain !== '' &&
+					wildcardZoneId &&
+					(!zoneDetectionSuccess || !zoneId || wildcardZoneId !== zoneId));
+
+			expectedRoutes = wildcardHasOwnZone
+				? [
+						{ pattern: customDomain, custom_domain: true },
+						wildcardRoute,
+					]
+				: [{ pattern: customDomain, custom_domain: true }];
+
+			if (!wildcardHasOwnZone && existingWildcardRoute) {
+				console.log(
+					`ℹ️  Dropping the wildcard route ${existingWildcardRoute.pattern}: it shares a zone with ${customDomain} and would shadow it`,
+				);
+			}
 
 			// Check if routes need updating
 			let needsUpdate = false;

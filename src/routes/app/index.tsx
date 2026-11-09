@@ -112,6 +112,7 @@ export default function AppView() {
 	useEffect(() => {
 		setDeploymentProgress('');
 		autoDeployAppIdRef.current = undefined;
+		setAutoPreviewState('idle');
 		setThinkPreviewUrl(undefined);
 		setActiveTab('preview');
 		setActiveFilePath(undefined);
@@ -343,7 +344,13 @@ export default function AppView() {
 	// Think apps auto-load their live SpaceDO preview for signed-in viewers
 	// (see the effect below). Anonymous viewers can't hit the auth-gated deploy
 	// endpoint, so they fall back to the same manual affordance as non-Think apps.
-	const isAutoLoadingPreview = isThink && !!user;
+	// The auto-preview is a state, not a constant: while it is loading the
+	// panel waits, and once it fails the manual "Deploy for preview" button
+	// comes back so the viewer can retry.
+	const [autoPreviewState, setAutoPreviewState] = useState<
+		'idle' | 'loading' | 'ready' | 'failed'
+	>('idle');
+	const isAutoLoadingPreview = isThink && !!user && autoPreviewState === 'loading';
 	// Think prefers its live preview over the production deployment link. For
 	// signed-in viewers we withhold the deployed link until the preview resolves
 	// so the preview always wins; anonymous viewers fall back to it.
@@ -367,6 +374,7 @@ export default function AppView() {
 			const data = await deployPreview();
 			if (data.previewURL || data.tunnelURL) {
 				setDeploymentProgress('Deployment complete!');
+				setAutoPreviewState('ready');
 			}
 		} catch (error) {
 			console.error('Error starting deployment:', error);
@@ -399,18 +407,27 @@ export default function AppView() {
 		}
 
 		autoDeployAppIdRef.current = app.id;
+		setAutoPreviewState('loading');
 		setDeploymentProgress('Loading preview...');
 		void deployPreview()
 			.then((data) => {
 				const url = getPreviewUrl(data.previewURL, data.tunnelURL);
-				if (url) setThinkPreviewUrl(url);
+				if (url) {
+					setThinkPreviewUrl(url);
+					setAutoPreviewState('ready');
+					setDeploymentProgress('');
+					return;
+				}
+				setAutoPreviewState('failed');
+				setDeploymentProgress('The preview did not return a URL.');
 			})
 			.catch((error) => {
 				console.error('Error loading Think preview:', error);
-				// The server explains what is missing (previews need a paid
-				// runtime); show that instead of a bare failure.
+				// The server explains what is missing; show that instead of a
+				// bare failure, and let the viewer retry.
 				const message =
 					error instanceof Error ? error.message : 'Failed to load preview';
+				setAutoPreviewState('failed');
 				setDeploymentProgress(message);
 				toast.add({
 					title: 'Preview unavailable',

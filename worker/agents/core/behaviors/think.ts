@@ -17,6 +17,10 @@ import { deriveShortTitle } from '../../utils/titleGenerator';
 import { PreviewType, TemplateDetails } from 'worker/services/sandbox/sandboxTypes';
 import { getSandboxService } from 'worker/services/sandbox/factory';
 import {
+	APP_BINDING,
+	buildThinkBundleArtifacts,
+} from 'worker/services/deployer/think-user-deploy';
+import {
 	buildSpacePreviewPath,
 	getPreviewDomain,
 	isSeparatePreviewDomain,
@@ -389,7 +393,7 @@ export class ThinkCodingBehavior
 	private async deployToRunner(): Promise<PreviewType | null> {
 		const instanceId = this.getAgentId().toLowerCase().replace(/[^a-z0-9-]/g, '-');
 		try {
-			const files = await this.collectBranchFiles();
+			const files = await this.collectRunnerFiles();
 			if (files.length === 0) {
 				this.logger.warn('No files to publish to the runner', { instanceId });
 				return null;
@@ -449,48 +453,67 @@ export class ThinkCodingBehavior
 		}
 	}
 
-	/** The branch's files, as the runner wants them. */
-	private async collectBranchFiles(): Promise<
+	/**
+	 * The app, as the runner wants it: the built bundle, not the source.
+	 *
+	 * The bundle is a module worker — the entry re-exports the App class and
+	 * adds a default fetch handler — which is the only shape a Durable Object
+	 * app can be served in. The source the agent wrote may be a bare class
+	 * with no default export, and `wrangler dev` rejects that outright.
+	 */
+	private async collectRunnerFiles(): Promise<
 		{ filePath: string; fileContents: string }[]
 	> {
-		const collected: { filePath: string; fileContents: string }[] = [];
-		const seen = new Set<string>();
+		const branch = this.state.currentBranch || 'main';
+		const bundle = await this.callSpace((space) => space.getDeploymentBundle(branch));
+		const artifacts = await buildThinkBundleArtifacts(
+			bundle,
+			this.state.blueprint?.title ?? this.state.projectName ?? 'vibe-app',
+			false,
+		);
 
-		const walk = async (dir?: string): Promise<void> => {
-			const entries = await this.callSpace((space) => space.readDir(dir));
-			for (const entry of entries) {
-				if (entry.type === 'directory') {
-					await walk(entry.path);
-					continue;
-				}
-				// The app's own bookkeeping never ships.
-				if (
-					entry.path.startsWith('/.git/') ||
-					entry.path.startsWith('/.afs/') ||
-					entry.path === '/.git' ||
-					entry.path === '/.afs'
-				) {
-					continue;
-				}
-				const path = entry.path.replace(/^\//, '');
-				if (!path || seen.has(path)) {
-					continue;
-				}
-				seen.add(path);
-				try {
-					const content = await this.callSpace((space) =>
-						space.readFile(entry.path),
-					);
-					collected.push({ filePath: path, fileContents: content });
-				} catch {
-					// A file that cannot be read is skipped, not fatal.
-				}
-			}
+		const files: { filePath: string; fileContents: string }[] = [
+			{ filePath: 'entry.js', fileContents: artifacts.entry },
+		];
+
+		for (const [name, source] of artifacts.modules) {
+			files.push({ filePath: name, fileContents: source });
+		}
+
+		for (const [path, content] of Object.entries(bundle.assets)) {
+			const assetPath = path.startsWith('/') ? path.slice(1) : path;
+			files.push({
+				filePath: `public/${assetPath}`,
+				fileContents: content,
+			});
+		}
+
+		const config: Record<string, unknown> = {
+			name: artifacts.scriptName,
+			main: 'entry.js',
+			compatibility_date: artifacts.compatibilityDate,
 		};
+		if (artifacts.migration) {
+			config['durable_objects'] = {
+				bindings: [{ name: APP_BINDING, class_name: 'App' }],
+			};
+			config['migrations'] = artifacts.migration;
+		}
+		if (artifacts.assetsConfig) {
+			config['assets'] = {
+				directory: './public',
+				binding: 'ASSETS',
+				run_worker_first: true,
+			};
+		}
+		files.push({
+			filePath: 'wrangler.json',
+			fileContents: JSON.stringify(config, null, 2),
+		});
 
-		await walk();
-		return collected;
+		return files;
 	}
+
 
 	private async getPublicOrigin(): Promise<string> {
 		if (isDev(this.env)) return 'http://localhost:5173';
