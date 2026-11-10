@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { DotsThreeVertical, Trash } from '@phosphor-icons/react';
+import { Copy, DotsThreeVertical, Trash } from '@phosphor-icons/react';
 import { Button, DeleteResource, DropdownMenu } from '@cloudflare/kumo';
 import { apiClient } from '@/lib/api-client';
 import { toast } from 'sonner';
@@ -77,6 +77,22 @@ export function AppActionsDropdown({
           }
         />
         <DropdownMenu.Content align="start">
+          <DropdownMenu.Item
+            icon={Copy}
+            onClick={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              // The delete confirmation asks for the app's name, and the
+              // name on the card is part of a link — copying it there
+              // navigates. Hand it over from here instead.
+              navigator.clipboard
+                .writeText(appTitle)
+                .then(() => toast.success('App name copied'))
+                .catch(() => toast.error('Could not copy the app name'));
+            }}
+          >
+            Copy name
+          </DropdownMenu.Item>
           <DropdownMenu.Item
             icon={Trash}
             variant="danger"
