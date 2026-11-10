@@ -516,7 +516,12 @@ export const AppCard = React.memo<AppCardProps>(
 							{showActions && (
 								<div
 									className="absolute right-3 top-3 opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100"
-									onClick={(e) => e.preventDefault()}
+									onClick={(e) => {
+										// The whole card is a link into the app; the
+										// actions area must not act as part of it.
+										e.stopPropagation();
+										e.preventDefault();
+									}}
 								>
 									<AppActionsDropdown
 										appId={app.id}

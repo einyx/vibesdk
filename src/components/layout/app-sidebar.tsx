@@ -132,7 +132,15 @@ function AppMenuItem({
 			</Sidebar.MenuButton>
 
 			{!isCollapsed && showActions && (
-				<div className="absolute right-1.5 top-1/2 z-10 -translate-y-1/2 opacity-0 transition-opacity group-hover/app-item:opacity-100 focus-within:opacity-100">
+				<div
+					className="absolute right-1.5 top-1/2 z-10 -translate-y-1/2 opacity-0 transition-opacity group-hover/app-item:opacity-100 focus-within:opacity-100"
+					onClick={(e) => {
+						// Clicks here are actions on the app, not navigation
+						// into it.
+						e.stopPropagation();
+						e.preventDefault();
+					}}
+				>
 					<AppActionsDropdown
 						appId={app.id}
 						appTitle={app.title}
