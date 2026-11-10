@@ -428,7 +428,11 @@ export class ThinkCodingBehavior
 				const stale = (listed.instances ?? []).filter(
 					(instance) =>
 						instance.runId !== created.runId &&
-						instance.directory.includes(projectName),
+						// The runner reports the project it serves. The
+						// directory is the fallback for runners that do not.
+						(instance.name === projectName ||
+							instance.projectName === projectName ||
+							instance.directory.includes(projectName)),
 				);
 				for (const instance of stale) {
 					await service

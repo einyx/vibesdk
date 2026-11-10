@@ -62,6 +62,9 @@ export type InstanceCreationRequest = z.infer<typeof InstanceCreationRequestSche
 
 export const InstanceDetailsSchema = z.object({
     runId: z.string(),
+    /** The project the instance serves — how a redeploy finds its predecessor. */
+    name: z.string().optional(),
+    projectName: z.string().optional(),
     startTime: z.union([z.string(), z.date()]),
     uptime: z.number(),
     previewURL: z.string().optional(),
