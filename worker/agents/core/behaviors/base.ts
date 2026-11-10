@@ -66,6 +66,9 @@ export interface BaseCodingOperations {
 /**
  * Base class for all coding behaviors
  */
+/** How long a single generation may run before it is aborted. */
+const GENERATION_TIMEOUT_MS = 10 * 60 * 1000;
+
 export abstract class BaseCodingBehavior<TState extends BaseProjectState> 
     extends AgentComponent<TState> implements ICodingAgent {
     protected static readonly MAX_COMMANDS_HISTORY = 10;
@@ -471,8 +474,19 @@ export abstract class BaseCodingBehavior<TState extends BaseProjectState>
         this.logger.info('Starting code generation', {
             totalFiles: this.getTotalFiles()
         });
-        await this.ensureTemplateDetails();
+        // A turn that never settles used to pin the agent to "generating"
+        // for good. The watchdog aborts the run so the promise settles, the
+        // state is cleared, and the user can simply try again.
+        const watchdog = setTimeout(() => {
+            this.logger.error('Code generation exceeded its time budget; aborting');
+            this.currentAbortController?.abort();
+        }, GENERATION_TIMEOUT_MS);
+
         try {
+            // Inside the try: a stall or failure here used to leave the
+            // generation promise pending forever, and the agent then refused
+            // every later request with "generation already in progress".
+            await this.ensureTemplateDetails();
             await this.build();
         } catch (error) {
             if (error instanceof RateLimitExceededError) {
@@ -482,6 +496,7 @@ export abstract class BaseCodingBehavior<TState extends BaseProjectState>
                 this.broadcastError("Error during generation", error);
             }
         } finally {
+            clearTimeout(watchdog);
             // Clear abort controller after generation completes
             this.clearAbortController();
             

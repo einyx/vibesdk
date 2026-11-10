@@ -63,14 +63,13 @@ export async function handleWebSocketMessage(
                     logger.error('Error during code generation:', error);
                     sendError(connection, `Error generating files: ${error instanceof Error ? error.message : String(error)}`);
                 }).finally(() => {
-                    // Only clear shouldBeGenerating on successful completion
-                    // (errors might want to retry, so this could be handled differently)
-                    if (!agent.getBehavior().isCodeGenerating()) {
-                        agent.setState({ 
-                            ...agent.state, 
-                            shouldBeGenerating: false 
-                        });
-                    }
+                    // Always clear the intent flag. Leaving it set pinned the
+                    // agent to "generating" and made every later request a
+                    // no-op, so the chat could never be retried.
+                    agent.setState({
+                        ...agent.state,
+                        shouldBeGenerating: false
+                    });
                 });
                 break;
             case WebSocketMessageRequests.DEPLOY: {
