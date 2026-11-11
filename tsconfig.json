@@ -14,6 +14,9 @@
 			"path": "./tsconfig.runner.json"
 		},
 		{
+			"path": "./tsconfig.builder.json"
+		},
+		{
 			"path": "./tsconfig.runtime.json"
 		}
 	],

@@ -48,6 +48,7 @@ export default defineWorkersConfig({
       '**/sdk/test/**', // SDK tests run with bun test, not vitest
       'runner/**', // The runner's tests need the node pool: vitest.runner.config.ts
       'runtime/**', // The runtime's tests need the node pool: vitest.runtime.config.ts
+      'builder/**', // The builder's tests need the node pool: vitest.builder.config.ts
       ...(runIntegrationTests ? [] : ['**/sdk/test/integration/**']),
     ],
   },
