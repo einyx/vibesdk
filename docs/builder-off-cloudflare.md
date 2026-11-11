@@ -217,6 +217,14 @@ it is off when it is not there — a platform with no switches behaves
 exactly as it did. The host's address is `BUILDER_SERVICE_URL`; without it
 the switch has nowhere to send anything, and says so.
 
+The store is Workers KV, which is eventually consistent: a flip takes up to
+a minute to reach every edge. That is fine for a switch meant to be
+flipped rarely, and it is why the switch is not the thing that decides
+anything urgent.
+
+A forwarded answer carries `x-builder-backend: host`, so which side
+answered is visible from the outside.
+
 The Worker's middleware forwards the request whole: the cookies, the
 authorization and the upgrade headers travel, because the host does the
 same work the Worker would have done — the same routes, the same

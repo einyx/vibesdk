@@ -82,7 +82,7 @@
 		"binding": "BROWSER",
 		"remote": true
 	},
-    // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // "dispatch_namespaces": [
+    // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // "dispatch_namespaces": [
  //     {
  //         "binding": "DISPATCHER",
  //         "namespace": "orange-build-default-namespace",
