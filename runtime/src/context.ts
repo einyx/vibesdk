@@ -18,6 +18,9 @@ export class NodeContext implements DurableObjectContext {
 	readonly exports: Record<string, unknown>;
 	readonly facets: { get<T>(name: string, init: () => T): Promise<T> };
 
+	/** The props the session was created with. */
+	props: Record<string, unknown> | undefined;
+
 	private readonly sockets = new Map<unknown, SocketRecord>();
 	private readonly pending: Promise<unknown>[] = [];
 	private readonly initializing: Promise<unknown>[] = [];

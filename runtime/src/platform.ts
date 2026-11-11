@@ -67,6 +67,17 @@ export { RpcTarget };
 export const exports: Record<string, unknown> = {};
 
 /**
+ * The platform's state.
+ *
+ * It is on the global, not in the module: the platform can be reached
+ * through more than one path — the runtime imports it directly, the SDK
+ * imports it as "cloudflare:workers" — and those are the same module in
+ * Node, but not necessarily in a bundler's world.
+ */
+const platformState = (globalThis as { __vibesdkPlatform?: { pendingSocket?: unknown } }).__vibesdkPlatform ??=
+	{ pendingSocket: undefined };
+
+/**
  * The WebSocket pair.
  *
  * Cloudflare hands the runtime a pair of sockets when a request asks to
@@ -75,11 +86,15 @@ export const exports: Record<string, unknown> = {};
  * the socket we already have, and the client's end is the response's
  * business, not ours.
  */
-let pendingSocket: unknown = null;
 
 /** The socket the next upgrade belongs to. */
 export function setPendingSocket(socket: unknown): void {
-	pendingSocket = socket;
+	platformState.pendingSocket = socket;
+}
+
+/** The socket the next upgrade belongs to. */
+export function getPendingSocket(): unknown {
+	return platformState.pendingSocket;
 }
 
 export class WebSocketPair {
@@ -87,11 +102,75 @@ export class WebSocketPair {
 	readonly 1: unknown;
 
 	constructor() {
-		const socket = pendingSocket;
-		pendingSocket = null;
+		const socket = platformState.pendingSocket;
+		platformState.pendingSocket = undefined;
 		this[0] = null;
-		this[1] = socket;
+		this[1] = socket === undefined ? undefined : new PlatformSocket(socket);
 	}
+}
+
+/**
+ * A socket, the way the SDK expects it.
+ *
+ * Cloudflare's WebSocket has an `accept()` — the connection is not open
+ * until it is accepted — and it carries an attachment. Node's socket is
+ * already open and has no attachment, so the adapter adds what is missing
+ * and passes the rest through.
+ */
+export class PlatformSocket {
+	// The SDK redefines `socket` on the object it is given — it reads the
+	// connection's socket as the connection itself — so the socket this
+	// one wraps is kept out of reach, in a real private field.
+	readonly #inner: unknown;
+
+	constructor(inner: unknown) {
+		this.#inner = inner;
+	}
+
+	/** The connection is open already: there is nothing to accept. */
+	accept(): void {}
+
+	send(data: unknown): void {
+		(this.#inner as { send(data: unknown): void }).send(data);
+	}
+
+	close(code?: number, reason?: string): void {
+		(this.#inner as { close(code?: number, reason?: string): void }).close(code, reason);
+	}
+
+	get readyState(): number {
+		return (this.#inner as { readyState: number }).readyState;
+	}
+
+	addEventListener(...args: unknown[]): void {
+		(this.#inner as { addEventListener(...args: unknown[]): void }).addEventListener(...args);
+	}
+
+	removeEventListener(...args: unknown[]): void {
+		(this.#inner as { removeEventListener(...args: unknown[]): void }).removeEventListener(...args);
+	}
+
+	serializeAttachment(attachment: unknown): void {
+		attachmentsFor(this).set(attachment);
+	}
+
+	deserializeAttachment(): unknown {
+		return attachmentsFor(this).get() ?? null;
+	}
+}
+
+/** The attachment of a socket, the way Cloudflare's WebSocket carries it. */
+function attachmentsFor(socket: object): { set(value: unknown): void; get(): unknown } {
+	const store = (globalThis as { __vibesdkSocketAttachments?: WeakMap<object, unknown> })
+		.__vibesdkSocketAttachments ??= new WeakMap<object, unknown>();
+	let value = store.get(socket);
+	return {
+		set: (next: unknown) => {
+			value = next;
+			store.set(socket, next);
+		},
+		get: () => value,
+	};
 }
 
 /**
@@ -107,15 +186,13 @@ export function patchWebSocket(): void {
 	const prototype = NativeWebSocket.prototype as unknown as { deserializeAttachment?: unknown };
 	if (prototype.deserializeAttachment) return;
 
-	const attachments = new WeakMap<object, unknown>();
-
 	class PlatformWebSocket extends NativeWebSocket {
 		serializeAttachment(attachment: unknown): void {
-			attachments.set(this, attachment);
+			attachmentsFor(this).set(attachment);
 		}
 
 		deserializeAttachment(): unknown {
-			return attachments.get(this) ?? null;
+			return attachmentsFor(this).get() ?? null;
 		}
 	}
 
@@ -173,6 +250,11 @@ export function patchResponse(): void {
 export function applyPlatform(): void {
 	patchResponse();
 	patchWebSocket();
+	// The Workers runtime has WebSocketPair as a global, and the SDK uses
+	// it as one.
+	if (!(globalThis as { WebSocketPair?: unknown }).WebSocketPair) {
+		(globalThis as { WebSocketPair?: unknown }).WebSocketPair = WebSocketPair;
+	}
 }
 
 applyPlatform();

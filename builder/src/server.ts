@@ -12,8 +12,11 @@
 import http from 'node:http';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { Readable } from 'node:stream';
+import { WebSocketServer, type WebSocket } from 'ws';
 
 import type { Assets } from './storage/assets.ts';
+import { setPendingSocket } from '../../runtime/src/platform.ts';
+import type { SessionRuntime } from '../../runtime/src/session.ts';
 
 export interface ServerOptions {
 	/** The application. */
@@ -22,6 +25,8 @@ export interface ServerOptions {
 	assets: Assets;
 	/** The origin the server answers on, used to build absolute URLs. */
 	origin: string;
+	/** The sessions, for the sockets the chat runs over. */
+	sessions?: SessionRuntime;
 }
 
 /** The context the application expects: a place to leave background work. */
@@ -96,7 +101,7 @@ const isApplicationPath = (pathname: string): boolean =>
 
 /** The server. */
 export function createServer(options: ServerOptions): http.Server {
-	return http.createServer((request, response) => {
+	const server = http.createServer((request, response) => {
 		void (async () => {
 			try {
 				const incoming = toRequest(request, options.origin);
@@ -116,4 +121,53 @@ export function createServer(options: ServerOptions): http.Server {
 			}
 		})();
 	});
+
+	/**
+	 * The chat's socket.
+	 *
+	 * An upgrade is a request the application routes like any other: the
+	 * controller hands it to the session, and the session's runtime builds
+	 * its connection from the socket the upgrade handler is holding. What
+	 * comes back is a response with a socket on it, and the socket is
+	 * already the client's — Node's upgrade has happened by now.
+	 */
+	const sockets = new WebSocketServer({ noServer: true });
+	sockets.on('connection', (socket: WebSocket, request: IncomingMessage) => {
+		void (async () => {
+			try {
+				const incoming = toRequest(request, options.origin);
+				// The session the socket belongs to is bound by the runtime,
+				// when the application hands the request to the session.
+				await options.fetch(incoming, options.env, executionContext());
+
+				socket.on('message', (data: Buffer | ArrayBuffer | Buffer[]) => {
+					void options.sessions?.webSocketMessage(socket, toMessage(data));
+				});
+				socket.on('close', (code: number, reason: Buffer) => {
+					void options.sessions?.webSocketClose(socket, code, reason.toString());
+				});
+			} catch (error) {
+				console.error('[builder] the socket failed', error);
+				socket.close(1011, 'the connection could not be established');
+			}
+		})();
+	});
+
+	server.on('upgrade', (request, socket, head) => {
+		sockets.handleUpgrade(request, socket, head, (websocket) => {
+			// The SDK's WebSocketPair takes the socket from here.
+			setPendingSocket(websocket);
+			sockets.emit('connection', websocket, request);
+		});
+	});
+
+	return server;
+}
+
+/** A socket's message, as the session expects it. */
+function toMessage(data: Buffer | ArrayBuffer | Buffer[]): string | ArrayBuffer {
+	if (typeof data === 'string') return data;
+	if (data instanceof ArrayBuffer) return data;
+	const buffer = Buffer.isBuffer(data) ? data : Buffer.concat(data);
+	return buffer.toString('utf8');
 }

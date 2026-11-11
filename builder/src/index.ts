@@ -94,6 +94,7 @@ export async function start(): Promise<BuilderHandle> {
 		env: hostEnv,
 		assets,
 		origin: `http://${config.host}:${config.port}`,
+		sessions,
 	});
 
 	await new Promise<void>((resolve, reject) => {

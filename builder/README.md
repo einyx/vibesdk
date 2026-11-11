@@ -56,14 +56,10 @@ with data from its own database.
 
 ## What is not here yet
 
-- **The chat socket.** The session runtime carries the sessions; the
-  WebSocket upgrade is not wired to Node's HTTP server yet, so the chat does
-  not connect.
-- **The agent's props.** A session is reached by its name, and the props an
-  agent is created with (its behaviour, its project type) are not carried
-  through the runtime's namespace yet.
 - **The workspaces.** `SpaceDO` is a Workers Durable Object; the workspace
-  and the git history it holds have no home on the host yet.
+  and the git history it holds have no home on the host yet. The filesystem
+  and the workspace are written (`runtime/src/workspace/`): the same
+  `FileSystem` the git is written against, over a volume.
 - **Postgres.** The database is SQLite, the same dialect D1 speaks, so the
   queries are the Worker's own. The plan calls for Postgres on the host; the
   schema change is a separate step.

@@ -211,6 +211,10 @@
         // on a wildcard route of the origin zone — a wildcard here would
         // shadow the auth origin.
         "CUSTOM_PREVIEW_DOMAIN": "",
+        // The builder on the host, when the platform runs in two places.
+        // The Worker stays the front door; the switch decides whether the
+        // work happens here or there.
+        "BUILDER_SERVICE_URL": "",
         "ARTIFACTS_NAMESPACE": "vibesdk-production",
         "PLATFORM_CAPABILITIES": {
             "features": {

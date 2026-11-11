@@ -7,7 +7,7 @@ import path from 'node:path';
 // vitest.runtime.config.ts stands in for the module hook the loader
 // installs outside a test.
 const { Agent } = await import('agents');
-const { SessionRuntime } = await import('../src/index.ts');
+const { SessionRuntime, setPendingSocket } = await import('../src/index.ts');
 
 interface Connection {
 	send(data: string): void;
@@ -100,6 +100,76 @@ describe('the agents SDK on Node', () => {
 		await stub.onMessage({ send: () => undefined }, 'through the stub');
 
 		expect(stub.state.count).toBe(1);
+		sessions.close();
+		rmSync(dir, { recursive: true, force: true });
+	});
+
+	it('carries the agent\'s props to the session', async () => {
+		const dir = dataDir();
+		const sessions = runtime(dir);
+
+		const seen: unknown[] = [];
+		class PropsAgent extends (Agent as unknown as new (ctx: unknown, env: unknown) => {
+			initialState: Record<string, never>;
+			onStart(props?: Record<string, unknown>): Promise<void>;
+		}) {
+			initialState = {};
+			async onStart(props?: Record<string, unknown>): Promise<void> {
+				seen.push(props);
+			}
+		}
+
+		const namespace = sessions.register(PropsAgent as never);
+		const stub = namespace.getByName('app-props') as unknown as {
+			setName(name: string, props?: Record<string, unknown>): void;
+			fetch(request: Request): Promise<Response>;
+		};
+
+		// The SDK sets the name and the props, then fetches the session.
+		stub.setName('app-props', { behaviorType: 'app' });
+		await stub.fetch(new Request('http://localhost/'));
+
+		expect(seen[0]).toEqual({ behaviorType: 'app' });
+		sessions.close();
+		rmSync(dir, { recursive: true, force: true });
+	});
+
+	it('binds an upgrade\'s socket to the session that took it', async () => {
+		const dir = dataDir();
+		const sessions = runtime(dir);
+
+		const messages: string[] = [];
+		class SocketAgent extends (Agent as unknown as new (ctx: unknown, env: unknown) => {
+			initialState: Record<string, never>;
+			webSocketMessage(socket: unknown, message: string | ArrayBuffer): void;
+		}) {
+			initialState = {};
+			webSocketMessage(_socket: unknown, message: string | ArrayBuffer): void {
+				messages.push(String(message));
+			}
+		}
+
+		const namespace = sessions.register(SocketAgent as never);
+		const socket = {
+			id: 'socket-1',
+			readyState: 1,
+			accept() {},
+			send() {},
+			close() {},
+			addEventListener() {},
+			removeEventListener() {},
+		};
+		setPendingSocket(socket);
+
+		const stub = namespace.getByName('app-socket') as unknown as {
+			fetch(request: Request): Promise<Response>;
+		};
+		await stub.fetch(new Request('http://localhost/', { headers: { upgrade: 'websocket' } }));
+
+		// The socket's messages belong to the session that took it.
+		await sessions.webSocketMessage(socket, 'hello over the socket');
+		expect(messages).toEqual(['hello over the socket']);
+
 		sessions.close();
 		rmSync(dir, { recursive: true, force: true });
 	});

@@ -16,6 +16,7 @@ import { mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { NodeContext } from './context.ts';
+import { getPendingSocket } from './platform.ts';
 import { SqliteStorage } from './storage.ts';
 
 export interface SessionInstance {
@@ -53,6 +54,7 @@ export class SessionRuntime {
 	private readonly sessions = new Map<string, { instance: SessionInstance; context: NodeContext }>();
 	private readonly sockets = new Map<unknown, string>();
 	private readonly databases = new Map<string, DatabaseSync>();
+	private readonly props = new Map<string, Record<string, unknown> | undefined>();
 
 	constructor(options: SessionRuntimeOptions) {
 		this.options = options;
@@ -71,12 +73,29 @@ export class SessionRuntime {
 		};
 	}
 
-	/** A stub: a reference to a session, by name. */
+	/**
+	 * A stub: a reference to a session, by name.
+	 *
+	 * The SDK's `getAgentByName` sets the name and the props on the stub
+	 * before it fetches the session, and the props reach the session
+	 * through the request — the header is how Cloudflare carries them too.
+	 */
 	private stub(className: string, name: string): SessionStub {
 		return new Proxy({ name } as SessionStub, {
 			get: (_target: SessionStub, property: string) => {
 				if (property === 'name') return name;
 				if (typeof property !== 'string') return undefined;
+
+				if (property === 'setName') {
+					return (sessionName: string, props?: Record<string, unknown>) => {
+						this.setProps(className, sessionName, props);
+					};
+				}
+
+				if (property === 'fetch') {
+					return (request: Request) => this.fetch(className, name, request);
+				}
+
 				const instance = this.session(className, name) as unknown as Record<string, unknown>;
 				const value = instance[property];
 				// A method is called on the session; anything else — a
@@ -85,6 +104,34 @@ export class SessionRuntime {
 				return (...args: unknown[]) => value.apply(instance, args);
 			},
 		});
+	}
+
+	/** The props an agent was created with, until the next one. */
+	private setProps(className: string, name: string, props?: Record<string, unknown>): void {
+		this.props.set(`${className}/${name}`, props);
+		const existing = this.sessions.get(`${className}/${name}`);
+		if (existing) existing.context.props = props;
+	}
+
+	/**
+	 * Hand a request to the session that owns the name.
+	 *
+	 * The props go on the request, the way Cloudflare carries them, and an
+	 * upgrade's socket is bound to the session before the request goes in:
+	 * the session is what will receive the socket's messages.
+	 */
+	async fetch(className: string, name: string, request: Request): Promise<Response> {
+		const instance = this.session(className, name);
+		const props = this.props.get(`${className}/${name}`);
+		const prepared = props ? withProps(request, props) : request;
+
+		const socket = getPendingSocket();
+		if (socket) {
+			this.sockets.set(socket, `${className}/${name}`);
+		}
+
+		if (!instance.fetch) return new Response('Not implemented', { status: 501 });
+		return instance.fetch(prepared);
 	}
 
 	/** The session with this name, created if it is not there yet. */
@@ -133,13 +180,6 @@ export class SessionRuntime {
 		return database;
 	}
 
-	/** Hand a request to the session that owns the name in the path. */
-	async fetch(className: string, name: string, request: Request): Promise<Response> {
-		const instance = this.session(className, name);
-		if (!instance.fetch) return new Response('Not implemented', { status: 501 });
-		return instance.fetch(request);
-	}
-
 	/** A message arrived on a socket: give it to the session that holds it. */
 	async webSocketMessage(socket: unknown, message: string | ArrayBuffer): Promise<void> {
 		const key = this.sockets.get(socket);
@@ -174,4 +214,16 @@ export class SessionRuntime {
 		this.databases.clear();
 		this.sessions.clear();
 	}
+}
+
+/**
+ * A request with the session's props on it.
+ *
+ * The header is how Cloudflare carries them: the SDK reads it when the
+ * session starts.
+ */
+function withProps(request: Request, props: Record<string, unknown>): Request {
+	const headers = new Headers(request.headers);
+	headers.set('x-partykit-props', JSON.stringify(props));
+	return new Request(request, { headers });
 }

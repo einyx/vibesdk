@@ -9,6 +9,7 @@ import { CsrfService } from './services/csrf/CsrfService';
 import { SecurityError, SecurityErrorType } from 'shared/types/errors';
 import { getGlobalConfigurableSettings } from './config';
 import { AuthConfig, setAuthLevel } from './middleware/auth/routeAuth';
+import { builderBackend } from './middleware/builder-backend';
 // import { initHonoSentry } from './observability/sentry';
 
 export function createApp(env: Env): Hono<AppEnv> {
@@ -37,7 +38,12 @@ export function createApp(env: Env): Hono<AppEnv> {
     
     // CORS configuration
     app.use('/api/*', cors(getCORSConfig(env)));
-    
+
+    // Where the work happens. When the host builder is answering, the
+    // request goes to it — the Worker keeps the front door, the host does
+    // the work, and the switch is what says which.
+    app.use('/api/*', builderBackend);
+
     // CSRF protection using double-submit cookie pattern with proper GET handling
     app.use('*', async (c, next) => {
         const method = c.req.method.toUpperCase();

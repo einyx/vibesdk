@@ -181,6 +181,37 @@ data is moved across.
   cluster, so the Worker is no longer the deploy target either.
 - **Browser Rendering**: the sidecar replaces the binding, exactly.
 
+## The switch
+
+The platform runs in two places at once: the Worker, and the builder on the
+host. They share the same source — the same routes, the same contracts, the
+same agent code — and they differ only in where the platform's pieces come
+from.
+
+The Worker stays the front door: it owns the hostname, the certificates and
+the edge. What the switch decides is where the *work* happens.
+
+```
+browser ── apps.prysm.sh ── edge ── Worker ──┬─ (off) the Worker answers
+                                               └─ (on)  the host builder answers
+```
+
+The switch is `runtime_switches` in the key-value store:
+
+```json
+{ "builderBackend": "host" }
+```
+
+It is read for five seconds, so a flip takes effect without a deploy, and
+it is off when it is not there — a platform with no switches behaves
+exactly as it did. The host's address is `BUILDER_SERVICE_URL`; without it
+the switch has nowhere to send anything, and says so.
+
+The Worker's middleware forwards the request whole: the cookies, the
+authorization and the upgrade headers travel, because the host does the
+same work the Worker would have done — the same routes, the same
+authentication, the same chat.
+
 ## Open decisions
 
 1. **Where does an app's workspace live** — **a volume per app.** Decided.
