@@ -94,7 +94,14 @@ export class RateLimitService {
         
         switch (rateLimitConfig.store) {
             case RateLimitStore.RATE_LIMITER: {
-                const result = await (env[rateLimitConfig.bindingName as keyof Env] as RateLimit).limit({ key });
+                // The rate limiter is a Workers binding. A platform that
+                // does not have one — the builder on the host — has no such
+                // limit; the stores below it still apply.
+                const limiter = env[rateLimitConfig.bindingName as keyof Env] as RateLimit | undefined;
+                if (!limiter) {
+                    return { success: true };
+                }
+                const result = await limiter.limit({ key });
                 return { success: result.success };
             }
             case RateLimitStore.KV: {

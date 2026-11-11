@@ -1,0 +1,13 @@
+{
+	"name": "@vibesdk/runtime",
+	"version": "0.1.0",
+	"private": true,
+	"type": "module",
+	"description": "The Node platform the builder's sessions run on: the Durable Object surface the agents SDK expects, backed by Node's own SQLite.",
+	"scripts": {
+		"test": "vitest run --config ../vitest.runtime.config.ts"
+	},
+	"engines": {
+		"node": ">=24"
+	}
+}

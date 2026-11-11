@@ -41,7 +41,14 @@ if printf '%s\n' "$STAGED_FILES" | grep -Eq "^runner/"; then
   bunx vitest run --config vitest.runner.config.ts || exit 1
 fi
 
-# 1c) The publisher's own tests. They need the node pool too: the
+# 1c) The runtime's own tests. They load the Cloudflare agents SDK on
+# Node, so they need the node pool too.
+if printf '%s\n' "$STAGED_FILES" | grep -Eq "^runtime/"; then
+  echo "[pre-commit] Running the runtime's tests"
+  bunx vitest run --config vitest.runtime.config.ts || exit 1
+fi
+
+# 1d) The publisher's own tests. They need the node pool too: the
 # publisher reads the environment and talks to the Kubernetes API.
 if printf '%s\n' "$STAGED_FILES" | grep -Eq "^publisher/"; then
   echo "[pre-commit] Running the publisher's tests"

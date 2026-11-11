@@ -3,6 +3,8 @@ declare namespace Cloudflare {
 		// Dashboard-managed settings are intentionally omitted from wrangler vars.
 		ALLOWED_EMAIL?: string;
 		ALLOCATION_STRATEGY?: string;
+		/** The host builder's address, when the platform runs there too. */
+		BUILDER_SERVICE_URL?: string;
 		ENABLE_ARTIFACTS?: string;
 		ENABLE_CLOUDFLARE_LIMITS?: string;
 		ENABLE_EMAIL_AUTH?: string;

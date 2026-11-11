@@ -86,6 +86,20 @@ export default tseslint.config(
       '@typescript-eslint/no-unused-vars': 'off',
     },
   },
+  // The runtime is a node platform: it loads the Cloudflare SDK on Node, so
+  // it is linted with node's globals rather than the browser's.
+  {
+    files: ['runtime/**/*.{ts,tsx}'],
+    extends: [js.configs.recommended, ...tseslint.configs.recommended],
+    languageOptions: {
+      ecmaVersion: 2022,
+      globals: globals.node,
+    },
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/no-unused-vars': 'off',
+    },
+  },
   // The publisher is a node service: it reads the environment, talks to
   // the Kubernetes API and serves HTTP, so it is linted with node's
   // globals rather than the browser's.

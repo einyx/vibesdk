@@ -1,0 +1,16 @@
+{
+	"name": "@vibesdk/builder",
+	"version": "0.1.0",
+	"private": true,
+	"type": "module",
+	"description": "The vibe builder as a host service: the same application the Worker runs, on Node.",
+	"scripts": {
+		"build": "tsx scripts/build.ts",
+		"start": "node dist/index.js",
+		"migrate": "node dist/migrate.js",
+		"test": "vitest run --config ../vitest.builder.config.ts"
+	},
+	"engines": {
+		"node": ">=24"
+	}
+}
