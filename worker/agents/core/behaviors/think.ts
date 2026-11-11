@@ -17,8 +17,8 @@ import { deriveShortTitle } from '../../utils/titleGenerator';
 import { PreviewType, TemplateDetails } from 'worker/services/sandbox/sandboxTypes';
 import { getSandboxService } from 'worker/services/sandbox/factory';
 import {
-	APP_BINDING,
 	buildThinkBundleArtifacts,
+	thinkBundleArtifactsToFiles,
 } from 'worker/services/deployer/think-user-deploy';
 import {
 	buildSpacePreviewPath,
@@ -36,6 +36,7 @@ import { THINK_MODEL_CONFIG, THINK_MODEL_ID } from '../../think/model-config';
 import type { BranchDeploymentBundle } from '@space-do/space';
 import { CloudflareAccountService } from '../../../services/cloudflare/CloudflareAccountService';
 import { deployThinkBundleToPlatform, deployThinkBundleToUserAccount } from '../../../services/deployer/think-user-deploy';
+import { ClusterPublisher } from '../../../services/publisher/clusterPublisher';
 import { resolveCloudflareAccessToken } from '../../../services/rate-limit/usageChecker';
 import type { CloudflareDeploymentErrorCode } from '../../../api/websocketTypes';
 
@@ -537,47 +538,7 @@ export class ThinkCodingBehavior
 			this.state.blueprint?.title ?? this.state.projectName ?? 'vibe-app',
 			false,
 		);
-
-		const files: { filePath: string; fileContents: string }[] = [
-			{ filePath: 'entry.js', fileContents: artifacts.entry },
-		];
-
-		for (const [name, source] of artifacts.modules) {
-			files.push({ filePath: name, fileContents: source });
-		}
-
-		for (const [path, content] of Object.entries(bundle.assets)) {
-			const assetPath = path.startsWith('/') ? path.slice(1) : path;
-			files.push({
-				filePath: `public/${assetPath}`,
-				fileContents: content,
-			});
-		}
-
-		const config: Record<string, unknown> = {
-			name: artifacts.scriptName,
-			main: 'entry.js',
-			compatibility_date: artifacts.compatibilityDate,
-		};
-		if (artifacts.migration) {
-			config['durable_objects'] = {
-				bindings: [{ name: APP_BINDING, class_name: 'App' }],
-			};
-			config['migrations'] = artifacts.migration;
-		}
-		if (artifacts.assetsConfig) {
-			config['assets'] = {
-				directory: './public',
-				binding: 'ASSETS',
-				run_worker_first: true,
-			};
-		}
-		files.push({
-			filePath: 'wrangler.json',
-			fileContents: JSON.stringify(config, null, 2),
-		});
-
-		return files;
+		return thinkBundleArtifactsToFiles(artifacts, bundle.assets);
 	}
 
 
@@ -1248,8 +1209,17 @@ export class ThinkCodingBehavior
 	/**
 	 * Default think deploy when `ENABLE_USER_ACCOUNT_DEPLOY` is off: publish the
 	 * SpaceDO bundle to the platform's dispatch namespace with platform creds.
+	 *
+	 * A deployment that has a publisher publishes to the cluster instead: the
+	 * app becomes a Kubernetes stack there, not a Worker on Cloudflare.
 	 */
 	private async deployThinkAppToPlatform(): Promise<{ deploymentUrl?: string; workersUrl?: string } | null> {
+		const publishServiceUrl = (this.env as unknown as { PUBLISH_SERVICE_URL?: string })
+			.PUBLISH_SERVICE_URL?.trim();
+		if (publishServiceUrl) {
+			return this.publishThinkAppToCluster(publishServiceUrl);
+		}
+
 		const instanceId = this.getAgentId();
 		this.broadcast(WebSocketMessageResponses.CLOUDFLARE_DEPLOYMENT_STARTED, {
 			message: 'Starting deployment to Cloudflare Workers...',
@@ -1303,6 +1273,80 @@ export class ThinkCodingBehavior
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
 			this.logger.error('Think platform deployment failed', error);
+			this.broadcast(WebSocketMessageResponses.CLOUDFLARE_DEPLOYMENT_ERROR, {
+				message: 'Deployment failed',
+				instanceId,
+				error: message,
+			});
+			return null;
+		}
+	}
+
+	/**
+	 * Publish the app to the cluster, as a Kubernetes stack.
+	 *
+	 * The publisher applies the app's stack — a Deployment, a Service and a
+	 * volume — into the cluster's app namespace, and the app is served from
+	 * there. The bundle is the same one the preview gets: a published app is
+	 * a preview that stays.
+	 */
+	private async publishThinkAppToCluster(
+		serviceUrl: string,
+	): Promise<{ deploymentUrl?: string; workersUrl?: string } | null> {
+		const instanceId = this.getAgentId();
+		this.broadcast(WebSocketMessageResponses.CLOUDFLARE_DEPLOYMENT_STARTED, {
+			message: 'Starting deployment to the cluster...',
+			instanceId,
+		});
+		try {
+			const apiKey = (this.env as unknown as { PUBLISH_SERVICE_API_KEY?: string })
+				.PUBLISH_SERVICE_API_KEY?.trim();
+			if (!apiKey) {
+				throw new Error('PUBLISH_SERVICE_API_KEY is not set, so the publisher cannot be called');
+			}
+
+			const branch = this.state.currentBranch || 'main';
+			try {
+				await this.callSpace((space) => space.gitCommit('deploy: publish to the cluster'));
+			} catch (error) {
+				this.logger.debug('No new workspace changes to commit before publishing', error);
+			}
+			const bundle = await this.callSpace((space) => space.getDeploymentBundle(branch));
+			const artifacts = await buildThinkBundleArtifacts(
+				bundle,
+				this.state.blueprint?.title ?? this.state.projectName ?? `vibe-${instanceId}`,
+				// The cluster has no Workers AI binding: the app runs on
+				// workerd in a pod, not on Cloudflare.
+				false,
+			);
+			const files = thinkBundleArtifactsToFiles(artifacts, bundle.assets);
+
+			const publisher = new ClusterPublisher(serviceUrl, apiKey);
+			const result = await publisher.publish({
+				appId: this.runnerInstanceId(),
+				name: this.state.blueprint?.title ?? this.state.projectName ?? instanceId,
+				files,
+				revision: bundle.commitHash,
+			});
+			if (!result.success) {
+				throw new Error(result.error ?? 'the publisher refused the app');
+			}
+			if (!result.url) {
+				throw new Error('the publisher did not say where the app is served from');
+			}
+
+			await new AppService(this.env).updateDeploymentId(instanceId, result.appId);
+			this.setState({ ...this.state, cloudflareDeploymentUrl: result.url });
+			this.broadcast(WebSocketMessageResponses.CLOUDFLARE_DEPLOYMENT_COMPLETED, {
+				message: 'Successfully deployed to the cluster',
+				instanceId,
+				deploymentUrl: result.url,
+				workersUrl: result.url,
+			});
+			return { deploymentUrl: result.url, workersUrl: result.url };
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			this.logger.error('Think cluster deployment failed', error);
 			this.broadcast(WebSocketMessageResponses.CLOUDFLARE_DEPLOYMENT_ERROR, {
 				message: 'Deployment failed',
 				instanceId,

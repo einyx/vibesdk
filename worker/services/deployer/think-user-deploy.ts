@@ -61,7 +61,7 @@ function buildEntryModule(mainModule: string, hasAssets: boolean, hasApp: boolea
 	return `${appExport}export default { async fetch(request, env) { ${assetRouting}${appRouting} } };`;
 }
 
-interface ThinkBundleArtifacts {
+export interface ThinkBundleArtifacts {
 	scriptName: string;
 	modules: Map<string, string>;
 	entry: string;
@@ -71,6 +71,60 @@ interface ThinkBundleArtifacts {
 	bindings: WorkerBinding[];
 	assetsConfig: AssetConfig | undefined;
 	migration: { tag: string; new_sqlite_classes: string[] }[] | undefined;
+}
+
+/**
+ * The bundle, as files.
+ *
+ * The same set the runner is given: the entry module, the app's modules,
+ * the assets, and a generated wrangler.json. A previewed app and a
+ * published app are the same bytes — one is temporary, the other is the
+ * stack in the cluster.
+ */
+export function thinkBundleArtifactsToFiles(
+	artifacts: ThinkBundleArtifacts,
+	assets: Record<string, string>,
+): { filePath: string; fileContents: string }[] {
+	const files: { filePath: string; fileContents: string }[] = [
+		{ filePath: 'entry.js', fileContents: artifacts.entry },
+	];
+
+	for (const [name, source] of artifacts.modules) {
+		files.push({ filePath: name, fileContents: source });
+	}
+
+	for (const [path, content] of Object.entries(assets)) {
+		const assetPath = path.startsWith('/') ? path.slice(1) : path;
+		files.push({
+			filePath: `public/${assetPath}`,
+			fileContents: content,
+		});
+	}
+
+	const config: Record<string, unknown> = {
+		name: artifacts.scriptName,
+		main: 'entry.js',
+		compatibility_date: artifacts.compatibilityDate,
+	};
+	if (artifacts.migration) {
+		config['durable_objects'] = {
+			bindings: [{ name: APP_BINDING, class_name: 'App' }],
+		};
+		config['migrations'] = artifacts.migration;
+	}
+	if (artifacts.assetsConfig) {
+		config['assets'] = {
+			directory: './public',
+			binding: 'ASSETS',
+			run_worker_first: true,
+		};
+	}
+	files.push({
+		filePath: 'wrangler.json',
+		fileContents: JSON.stringify(config, null, 2),
+	});
+
+	return files;
 }
 
 export async function buildThinkBundleArtifacts(

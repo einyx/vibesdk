@@ -12,6 +12,9 @@
 		},
 		{
 			"path": "./tsconfig.runner.json"
+		},
+		{
+			"path": "./tsconfig.publisher.json"
 		}
 	],
 	"compilerOptions": {

@@ -1,0 +1,14 @@
+{
+	"name": "@vibesdk/publisher",
+	"version": "1.0.0",
+	"private": true,
+	"type": "module",
+	"description": "The Publisher service for vibesdk: a bundle of files becomes a Kubernetes stack, and the deployed apps are served from it.",
+	"scripts": {
+		"start": "node --experimental-strip-types --disable-warning=ExperimentalWarning src/server.ts",
+		"test": "vitest run --config ../vitest.publisher.config.ts"
+	},
+	"engines": {
+		"node": ">=24"
+	}
+}
