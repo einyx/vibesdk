@@ -71,28 +71,41 @@ other code calls into (`env.SPACE_DO.get(idFromName(name))`,
 
 Off-platform, that becomes:
 
-- **Session state** — Postgres rows per app (or SQLite per app on its volume).
-  The `agents` SDK keeps the whole agent state in one row of one table
-  (`cf_agents_state`); a port can keep that shape and the same serialisation.
-- **Session routing** — a registry mapping an app id to the process holding
-  its session, so `GET /api/agent/:id/ws` reaches the right session and
-  `env.SPACE_DO.get(idFromName(name))` reaches the right workspace. Redis or
-  Postgres, with the process re-announcing itself on start.
-- **WebSockets** — a plain `ws` server per process. Hibernation is not
+- **Session state** — a SQLite file per session, on a volume.
+- **Session routing** — a registry mapping an app id to the session that
+  holds it, so `GET /api/agent/:id/ws` reaches the right session and
+  `env.SPACE_DO.get(idFromName(name))` reaches the right workspace.
+- **WebSockets** — a plain socket server per process. Hibernation is not
   needed: a hibernating DO costs nothing while idle, and a Node process
   holding a session costs memory. The counter-pressure is the opposite of
   Cloudflare's: here an idle session is *expensive*, so sessions need to be
   parked (state written, connection dropped, rehydrated on the next request)
   or the process must be elastic.
 
-The `agents` and `partyserver` packages are Cloudflare's, and they are where
-the state, the hibernation and the RPC live. The application's own agent
-logic — `worker/agents/**`, roughly 6,000 lines — is ordinary TypeScript and
-moves. So the port is not "rewrite the agent"; it is "reimplement the DO
-binding layer the SDK provides, and keep everything above it".
+### What the spike proved
 
-That reimplementation is the spike. Until it is written, the plan is a
-hypothesis.
+The question this section used to hold open was whether the `agents` SDK
+could run off Durable Objects at all. It can, and nothing had to be
+rewritten: `runtime/` provides the platform the SDK expects, and the SDK —
+Cloudflare's own — runs on it.
+
+```
+state on a fresh session: { count: 0 }
+answer: {"count":1,"message":"hello"}
+state after a message: { count: 1 }
+state after a restart: { count: 1 }
+```
+
+The surface the SDK reaches for is eight methods and a table: `ctx.id.name`,
+`ctx.storage.sql.exec`, the key-value store, the alarms, the sockets, the
+lifecycle calls, the export table, and the ambient environment. Everything
+above that — the agent's state, its tools, its compaction — is ordinary
+TypeScript and moves untouched.
+
+What that changes about the plan: Phase 3 is not "port the agent runtime".
+It is "port the agent runtime's surroundings" — the workspace, the
+cross-session calls, the parking policy — and then run the SDK that is
+already here.
 
 ## Phases
 
@@ -118,8 +131,11 @@ a real directory per app on a volume, real git, and Forgejo as the remote
 (Forgejo already runs on the prysm host). The `SpaceFsBackend` interface is
 the seam — a third backend drops in beside the two that exist.
 
-**Phase 3 — the session runtime.** The spike from the section above, then
-`CodeGeneratorAgent` and `ThinkAgent` on it.
+**Phase 3 — the session runtime.** The platform is written (`runtime/`) and
+the SDK runs on it. What is left is the surroundings: the HTTP layer that
+routes a request to the session that owns the name, the workspace inside a
+session, the cross-session calls, and the parking policy for idle sessions.
+Then `CodeGeneratorAgent` and `ThinkAgent` run on it.
 
 **Phase 4 — the edge.** The SPA served by Caddy instead of `env.ASSETS`,
 the WebSocket endpoint routed by the session registry, the preview and
@@ -131,21 +147,36 @@ data is moved across.
 
 ## The risks
 
-- **The `agents` SDK.** If its DO-free core is not cleanly separable, Phase 3
-  becomes "port the agent framework" rather than "port the agent". This is
-  the risk worth spending the spike on first.
-- **The workspace's git history.** Artifacts gives every app a repo with
-  branches and restore points, and the UI has a Repo tab that reads it. Forgejo
-  can do this, but the API is not the same and the `packages/artifacts-viewer`
-  frontend talks to Artifacts directly.
-- **Idle sessions cost memory.** The opposite of Cloudflare's economics. Needs
-  a parking policy before the first real user, not after.
-- **One node.** The cluster is a single k3s node today. The builder moving
-  there moves its availability there with it, and the builder is the product.
+- **The workspace.** The agent's files and its git history live inside the
+  session (a Durable Object with `@cloudflare/shell`'s `Workspace` over DO
+  SQLite), with Cloudflare Artifacts as the remote. Off-platform that is a
+  directory on a volume and a real git — but the SDK's own `FileSystem`
+  interface is the seam, and the workspace is where the generated app is
+  hosted as a facet.
 - **The generated app's runtime is still workerd.** Moving the builder off
-  Cloudflare does not move the apps it generates — they run in the publisher's
-  pods, on workerd, which is the open-source runtime. That is already the
-  case.
+  Cloudflare does not move the apps it generates — they run in the
+  publisher's pods, on workerd, which is the open-source runtime. That is
+  already the case.
+- **Idle sessions cost memory.** The opposite of Cloudflare's economics.
+  Needs a parking policy before the first real user, not after.
+- **One node.** The cluster is a single k3s node today. The builder moving
+  there moves its availability there with it, and the builder is the
+  product.
+- **The API is not small.** 77 routes and 61 WebSocket message types, and
+  the SDK re-exports the worker's protocol types, so the frontend and the
+  SDK must keep working against the same contract throughout.
+
+## What is already done
+
+- **The platform** (`runtime/`): the Durable Object surface the `agents` SDK
+  expects, on Node, with the SDK running on it unmodified. Its state is
+  SQLite, on a volume; a session survives the process.
+- **The preview host**: the `runner` serves previews on the cluster, so the
+  Worker Loader and DO Facets — the paid-plan features — are no longer
+  needed.
+- **The deploy host**: the `publisher` applies an app's stack to the
+  cluster, so the Worker is no longer the deploy target either.
+- **Browser Rendering**: the sidecar replaces the binding, exactly.
 
 ## Open decisions
 
@@ -155,9 +186,9 @@ data is moved across.
 2. **The git remote** — Forgejo (it runs, it is a real forge, the API differs
    from Artifacts) or bare git repositories on a volume (no API to speak of,
    nothing to run).
-3. **Postgres or SQLite per session** — one database for everything (simple,
-   one backup story, hot rows) or a database per app (isolation, closer to
-   the DO model, more to operate).
-4. **How the `agents` SDK is replaced** — reimplement its DO-free core in this
-   repository, or vendor the SDK and patch it. The first is ours to maintain;
-   the second is upstream's code with our patches.
+3. **Where the platform's data goes** — one Postgres for everything (simple,
+   one backup story, hot rows) or Postgres for the catalogue and SQLite per
+   session for the agent state (which is what the SDK already writes).
+4. **How the HTTP layer is shaped** — one process that holds every session
+   (simple, one port, a session per app in memory) or one process per
+   session (isolated, elastic, but the routing has to find them).

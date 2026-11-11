@@ -25,6 +25,7 @@
 		"cf-typegen": "wrangler types --include-runtime false",
 		"test": "vitest run",
 		"test:runner": "vitest run --config vitest.runner.config.ts",
+		"test:runtime": "vitest run --config vitest.runtime.config.ts",
 		"test:integration": "VIBESDK_RUN_INTEGRATION_TESTS=1 vitest run sdk/test/integration/integration.test.ts",
 		"test:watch": "vitest",
 		"test:coverage": "vitest run --coverage",

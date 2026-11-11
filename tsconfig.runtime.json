@@ -1,0 +1,10 @@
+{
+	"extends": "./tsconfig.node.json",
+	"compilerOptions": {
+		"composite": true,
+		"tsBuildInfoFile": "./node_modules/.tmp/tsconfig.runtime.tsbuildinfo",
+		"types": ["node", "@cloudflare/workers-types"],
+		"lib": ["ES2023"]
+	},
+	"include": ["./runtime"]
+}
