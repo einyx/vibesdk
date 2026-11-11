@@ -388,7 +388,7 @@ function instanceFromMeta(meta: PersistedMeta, dir: string): Instance {
  * instance is never adopted twice — which would start two dev servers for
  * the same preview.
  */
-async function adoptInstance(id: string): Promise<Instance | null> {
+export async function adoptInstance(id: string): Promise<Instance | null> {
     const existing = instances.get(id);
     if (existing) return existing;
 
@@ -397,14 +397,20 @@ async function adoptInstance(id: string): Promise<Instance | null> {
     if (!meta) return null;
 
     const instance = instanceFromMeta(meta, dir);
+    // Adopting an instance is an access: it is being revived because
+    // somebody asked for it, or because the pod came back. Keeping the
+    // timestamp it was last asked for would make the sweep evict it the
+    // moment it was restored — a preview that dies on the rollout that
+    // was supposed to keep it alive.
+    instance.lastAccessedAt = Date.now();
     // The persisted port may be held by something else now: the dev server
     // would fail to bind and the preview would never come up.
     if (!(await isPortFree(instance.port))) {
         const port = await allocatePort();
         if (port === null) return null; // No free port.
         instance.port = port;
-        persistInstanceMeta(instance);
     }
+    persistInstanceMeta(instance);
     instances.set(instance.id, instance);
     return instance;
 }
