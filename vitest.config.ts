@@ -46,6 +46,7 @@ export default defineWorkersConfig({
       '**/container/monitor-cli.test.ts',
       '**/cf-git/**',
       '**/sdk/test/**', // SDK tests run with bun test, not vitest
+      'runner/**', // The runner's tests need the node pool: vitest.runner.config.ts
       ...(runIntegrationTests ? [] : ['**/sdk/test/integration/**']),
     ],
   },

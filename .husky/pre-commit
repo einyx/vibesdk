@@ -34,6 +34,13 @@ else
   echo "[pre-commit] No staged TS/TSX; skipping typecheck"
 fi
 
+# 1b) The runner's own tests. They need the node pool (the runner spawns
+# processes), so they are a separate run from the Workers-pool suite.
+if printf '%s\n' "$STAGED_FILES" | grep -Eq "^runner/"; then
+  echo "[pre-commit] Running the runner's tests"
+  bunx vitest run --config vitest.runner.config.ts || exit 1
+fi
+
 # 2) Tests
 # Use Vitest 'related' to run only affected tests for staged files.
 # Exclude heavy directories that are not relevant at commit time.

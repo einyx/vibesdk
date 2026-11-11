@@ -1,0 +1,14 @@
+{
+	"name": "@vibesdk/runner",
+	"version": "1.0.0",
+	"private": true,
+	"type": "module",
+	"description": "The Runner service for vibesdk: instances, command execution and preview proxying, on node rather than Cloudflare containers.",
+	"scripts": {
+		"start": "node --experimental-strip-types --disable-warning=ExperimentalWarning src/server.ts",
+		"test": "vitest run --config ../vitest.runner.config.ts"
+	},
+	"engines": {
+		"node": ">=24"
+	}
+}

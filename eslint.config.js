@@ -71,4 +71,19 @@ export default tseslint.config(
       'react-refresh/only-export-components': 'off',
     },
   },
+  // The runner is a node service: it spawns dev servers, reads the
+  // environment and serves HTTP, so it is linted with node's globals
+  // rather than the browser's.
+  {
+    files: ['runner/**/*.{ts,tsx}'],
+    extends: [js.configs.recommended, ...tseslint.configs.recommended],
+    languageOptions: {
+      ecmaVersion: 2022,
+      globals: globals.node,
+    },
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/no-unused-vars': 'off',
+    },
+  },
 )
