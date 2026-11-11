@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { sqliteTable, text, integer, real, index, uniqueIndex } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, real, blob, index, uniqueIndex } from 'drizzle-orm/sqlite-core';
 
 // Schema enum arrays derived from config types  
 const REASONING_EFFORT_VALUES = ['low', 'medium', 'high'] as const;
@@ -360,6 +360,21 @@ export const appViews = sqliteTable('app_views', {
     appViewedAtIdx: index('app_views_app_viewed_at_idx').on(table.appId, table.viewedAt),
     appViewerIdx: uniqueIndex('app_views_app_viewer_idx').on(table.appId, table.viewerHash),
 }));
+
+/**
+ * AppScreenshots table - The preview picture of an app.
+ *
+ * One picture per app: a new capture replaces the old one. The image lives
+ * here rather than in R2 because a deployment on the free plan has no
+ * bucket bound — the database is always there, and the screenshot endpoint
+ * serves from it.
+ */
+export const appScreenshots = sqliteTable('app_screenshots', {
+    appId: text('app_id').primaryKey(),
+    mimeType: text('mime_type').notNull(),
+    image: blob('image').notNull(),
+    capturedAt: integer('captured_at', { mode: 'timestamp' }).notNull(),
+});
 
 // ========================================
 // OAUTH AND EXTERNAL INTEGRATIONS

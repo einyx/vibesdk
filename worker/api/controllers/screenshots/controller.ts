@@ -49,6 +49,25 @@ function getMimeByExtension(file: string): string | undefined {
         default: return undefined;
     }
 }
+
+/**
+ * The bytes of an image, whatever shape the database handed them back in.
+ *
+ * A blob column comes out of D1 as a plain array of byte values; other
+ * paths hand back an ArrayBuffer, a typed array or base64 text.
+ */
+function toBytes(value: unknown): Uint8Array {
+    if (value instanceof Uint8Array) return value;
+    if (value instanceof ArrayBuffer) return new Uint8Array(value);
+    if (Array.isArray(value)) return new Uint8Array(value as number[]);
+    if (typeof value === 'string') {
+        const binary = atob(value);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        return bytes;
+    }
+    return new Uint8Array(0);
+}
 export class ScreenshotsController extends BaseController {
     static logger = createLogger('ScreenshotsController');
     static async serveScreenshot(
@@ -90,21 +109,40 @@ export class ScreenshotsController extends BaseController {
             }
 
             const key = `screenshots/${appId}/${validatedFile}`;
-            const obj = await env.TEMPLATES_BUCKET.get(key);
-            if (!obj || !obj.body) {
-                return ScreenshotsController.createErrorResponse('Screenshot not found', 404);
+            // R2 is where a screenshot normally lives; a deployment without a
+            // bucket bound keeps it in the database instead.
+            let body: BodyInit | null = null;
+            let contentType: string | undefined;
+            if (env.TEMPLATES_BUCKET) {
+                const obj = await env.TEMPLATES_BUCKET.get(key);
+                if (!obj || !obj.body) {
+                    return ScreenshotsController.createErrorResponse('Screenshot not found', 404);
+                }
+                body = obj.body;
+                contentType = obj.httpMetadata?.contentType;
+            } else {
+                const row = await env.DB.prepare(
+                    'SELECT mime_type, image FROM app_screenshots WHERE app_id = ?',
+                )
+                    .bind(appId)
+                    .first<{ mime_type: string; image: unknown }>();
+                if (!row || !row.image) {
+                    return ScreenshotsController.createErrorResponse('Screenshot not found', 404);
+                }
+                body = toBytes(row.image);
+                contentType = row.mime_type;
             }
 
-            const contentType = obj.httpMetadata?.contentType || getMimeByExtension(validatedFile) || 'image/png';
+            const resolvedType = contentType || getMimeByExtension(validatedFile) || 'image/png';
             const headers = new Headers({
-                'Content-Type': contentType,
+                'Content-Type': resolvedType,
                 'Cache-Control': 'public, max-age=21600',
                 'X-Content-Type-Options': 'nosniff',
             });
 
 			// We return a naked Response because our controller helper types expect JSON, but this route is binary.
 			// It's safe because the router uses this Response directly.
-			return new Response(obj.body, {
+			return new Response(body, {
 				headers,
 			}) as unknown as ControllerResponse<ApiResponse<never>>;
 		        } catch (error) {

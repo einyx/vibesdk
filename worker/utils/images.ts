@@ -145,6 +145,29 @@ export async function uploadImageToR2(env: Env, image: ImageAttachment, type: Im
     return { url: getPublicUrlForR2Image(env, r2Key), r2Key };
 }
 
+/**
+ * Keep a screenshot in the database and return the URL it is served from.
+ *
+ * R2 is the normal home for an image, but a deployment on the free plan has
+ * no bucket bound (and the account may not have R2 enabled at all). The
+ * database is always there, and the screenshot endpoint can serve from it.
+ */
+export async function uploadImageToDatabase(env: Env, image: ImageAttachment, bytes?: Uint8Array): Promise<string> {
+    const data = bytes ?? base64ToUint8Array(image.base64Data!);
+    await env.DB.prepare(
+        `INSERT INTO app_screenshots (app_id, mime_type, image, captured_at)
+         VALUES (?, ?, ?, ?)
+         ON CONFLICT(app_id) DO UPDATE SET
+            mime_type = excluded.mime_type,
+            image = excluded.image,
+            captured_at = excluded.captured_at`,
+    )
+        .bind(image.id, image.mimeType, data, Date.now())
+        .run();
+
+    return getPublicUrlForR2Image(env, `${ImageType.SCREENSHOTS}/${image.id}/${encodeURIComponent(image.filename)}`);
+}
+
 export async function uploadImage(env: Env, image: ImageAttachment, type: ImageType): Promise<ProcessedImageAttachment> {
     // Hash in parallel to uploads
     const hashPromise = hashImageB64url(image.base64Data!);
@@ -161,8 +184,19 @@ export async function uploadImage(env: Env, image: ImageAttachment, type: ImageT
         }
     }
 
-    // Upload to R2 with cfImagesUrl in custom metadata when available
-    const { r2Key, url } = await uploadImageToR2(env, image, type, cfImagesUrl, bytes);
+    let url: string;
+    let r2Key = '';
+    if (env.TEMPLATES_BUCKET) {
+        const uploaded = await uploadImageToR2(env, image, type, cfImagesUrl, bytes);
+        url = uploaded.url;
+        r2Key = uploaded.r2Key;
+    } else if (type === ImageType.SCREENSHOTS) {
+        // No bucket bound: the database keeps the screenshot, and the
+        // screenshot endpoint serves it from there.
+        url = await uploadImageToDatabase(env, image, bytes);
+    } else {
+        throw new Error('No image storage is available: bind an R2 bucket (TEMPLATES_BUCKET) to store images');
+    }
     const hash = await hashPromise;
 
     return {

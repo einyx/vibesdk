@@ -14,10 +14,11 @@ import http from 'node:http';
 import type { Browser, Page } from 'puppeteer';
 import puppeteer from 'puppeteer';
 
-import { runCapture } from '../worker/services/browser-capture/capture-core';
+import { runCapture, runScreenshot } from '../worker/services/browser-capture/capture-core';
 import type {
 	CapturePage,
 	CapturePayload,
+	ScreenshotPayload,
 } from '../worker/services/browser-capture/types';
 
 const PORT = Number(process.env.PORT ?? 9223);
@@ -52,6 +53,17 @@ async function handleCapture(payload: CapturePayload) {
 	const page: Page = await browser.newPage();
 	// puppeteer's Page satisfies the CapturePage structural type.
 	return runCapture(page as unknown as CapturePage, payload);
+}
+
+async function handleScreenshot(payload: ScreenshotPayload) {
+	const browser = await getBrowser();
+	const page: Page = await browser.newPage();
+	const image = await runScreenshot(page as unknown as CapturePage, payload);
+	return {
+		url: payload.url,
+		captured_at: new Date().toISOString(),
+		image: Buffer.from(image).toString('base64'),
+	};
 }
 
 function readBody(req: http.IncomingMessage): Promise<string> {
@@ -90,6 +102,22 @@ const server = http.createServer(async (req, res) => {
 			const result = await handleCapture(payload);
 			return sendJson(res, 200, result);
 		}
+		if (req.method === 'POST' && req.url === '/capture-screenshot') {
+			const raw = await readBody(req);
+			let payload: ScreenshotPayload;
+			try {
+				payload = JSON.parse(raw) as ScreenshotPayload;
+			} catch (e) {
+				return sendJson(res, 400, {
+					error: `invalid JSON body: ${e instanceof Error ? e.message : String(e)}`,
+				});
+			}
+			if (!payload?.url) {
+				return sendJson(res, 400, { error: 'missing required field: url' });
+			}
+			const result = await handleScreenshot(payload);
+			return sendJson(res, 200, result);
+		}
 		res.statusCode = 404;
 		res.end();
 	} catch (e) {
@@ -102,7 +130,7 @@ const server = http.createServer(async (req, res) => {
 
 server.listen(PORT, HOST, () => {
 	console.log(`[dev-browser-sidecar] listening on http://${HOST}:${PORT}`);
-	console.log('[dev-browser-sidecar] endpoints: GET /health, POST /capture-console-logs');
+	console.log('[dev-browser-sidecar] endpoints: GET /health, POST /capture-console-logs, POST /capture-screenshot');
 });
 
 async function shutdown(signal: string) {

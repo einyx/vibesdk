@@ -11,6 +11,7 @@
 import type {
 	CapturePage,
 	CapturePayload,
+	ScreenshotPayload,
 	BrowserConsoleCaptureResult,
 	BrowserConsoleEntry,
 	BrowserConsolePageError,
@@ -96,4 +97,35 @@ export async function runCapture(
 		pageErrors,
 		requestFailures,
 	};
+}
+
+/**
+ * Puppeteer-agnostic screenshot core.
+ *
+ * The same navigate-and-settle the console capture does, then a PNG of the
+ * viewport. Shared by the in-worker `BindingCaptureClient` and the dev
+ * sidecar so both take the same picture.
+ */
+export async function runScreenshot(
+	page: CapturePage,
+	payload: ScreenshotPayload,
+): Promise<Uint8Array> {
+	try {
+		await page.setViewport(payload.viewport);
+		await page.goto(payload.url, {
+			waitUntil: 'networkidle2',
+			timeout: PAGE_LOAD_TIMEOUT_MS,
+		});
+		const waitMs = Math.max(0, payload.waitSeconds) * 1000;
+		if (waitMs > 0) {
+			await new Promise((r) => setTimeout(r, waitMs));
+		}
+		return await page.screenshot({ type: 'png', fullPage: false });
+	} finally {
+		try {
+			await page.close();
+		} catch {
+			// ignore close failures
+		}
+	}
 }

@@ -1893,53 +1893,32 @@ export abstract class BaseCodingBehavior<TState extends BaseProjectState>
     }
 
     /**
-     * Execute a single screenshot capture attempt using Cloudflare Browser Rendering API.
+     * Execute a single screenshot capture attempt.
+     *
+     * The picture is taken by the same Chromium the console capture uses:
+     * the Browser Rendering REST API needs an API token with the Browser
+     * Rendering scope, which this deployment's token does not have (it
+     * answers 401), while the BROWSER binding is bound and already works.
      */
     private async executeScreenshotCapture(
         url: string,
         viewport: { width: number; height: number }
     ): Promise<string> {
-        const apiUrl = `https://api.cloudflare.com/client/v4/accounts/${this.env.CLOUDFLARE_ACCOUNT_ID}/browser-rendering/snapshot`;
-
-        const response = await fetch(apiUrl, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${this.env.CLOUDFLARE_API_TOKEN}`,
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                url: url,
-                viewport: viewport,
-                gotoOptions: {
-                    waitUntil: 'networkidle2',
-                    timeout: SCREENSHOT_CONFIG.PAGE_LOAD_TIMEOUT
-                },
-                waitForTimeout: SCREENSHOT_CONFIG.WAIT_FOR_TIMEOUT,
-                screenshotOptions: {
-                    fullPage: false,
-                    type: 'png'
-                }
-            }),
+        const client = getBrowserCaptureClient(this.env, this.logger);
+        const result = await client.captureScreenshot({
+            url,
+            viewport,
+            waitSeconds: Math.ceil(SCREENSHOT_CONFIG.WAIT_FOR_TIMEOUT / 1000),
         });
 
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`Browser Rendering API failed: ${response.status} - ${errorText}`);
+        if (result.warning) {
+            throw new Error(result.warning);
+        }
+        if (!result.image || result.image.length === 0) {
+            throw new Error('The browser returned no image');
         }
 
-        const result = await response.json() as {
-            success: boolean;
-            result: {
-                screenshot: string;
-                content: string;
-            };
-        };
-
-        if (!result.success || !result.result.screenshot) {
-            throw new Error('Browser Rendering API succeeded but no screenshot returned');
-        }
-
-        return result.result.screenshot;
+        return Buffer.from(result.image).toString('base64');
     }
 
     /**

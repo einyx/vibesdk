@@ -23,7 +23,18 @@ const DESCRIPTION = [
 	"OUTPUT is JSON: { url, captured_at, logs:[{level,text,location}], page_errors:[{message,stack}], request_failures:[{url,failure,status}], truncated, totals, warning? }. If 'warning' is set in dev, the browser sidecar wasn't reachable — instruct the user to run 'npm run dev:browser' and retry. Each category is independently capped at max_lines (default 100, -1 = no limit).",
 ].join('\n');
 
-export function createBrowserConsoleLogsTool(opts: { env: Env; defaultUrl?: string }): Tool {
+export function createBrowserConsoleLogsTool(opts: {
+	env: Env;
+	defaultUrl?: string;
+	/**
+	 * Resolves the preview URL at call time.
+	 *
+	 * The preview moves when the app is republished, so on a deployment that
+	 * hosts previews elsewhere (the runner) the URL is asked of whoever
+	 * serves it rather than remembered from when the agent was configured.
+	 */
+	resolveUrl?: () => Promise<string | undefined>;
+}): Tool {
 	const { env, defaultUrl } = opts;
 	const logger = createLogger('ThinkBrowserLogs');
 	return tool({
@@ -54,7 +65,7 @@ export function createBrowserConsoleLogsTool(opts: { env: Env; defaultUrl?: stri
 			max_lines?: number;
 			interact_script?: string;
 		}) => {
-			const targetUrl = args.url ?? defaultUrl;
+			const targetUrl = args.url ?? (await opts.resolveUrl?.()) ?? defaultUrl;
 			if (!targetUrl) {
 				return JSON.stringify({
 					error:

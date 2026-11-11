@@ -43,9 +43,20 @@ export function createDeploySpaceTool(opts: { getStub: () => SpaceWorkspaceStub 
 				const result = await withDurableObjectResetRetry(getStub, (stub) => stub.deploy(branch));
 				return JSON.stringify({ branch, ...(result as Record<string, unknown>) }, null, 2);
 			} catch (e) {
+				const message = e instanceof Error ? e.message : String(e);
+				// The space resets itself after a successful deploy, and the
+				// reset takes the RPC response down with it. The deploy did
+				// happen — report it as such instead of as a failure.
+				if (message.includes('Generated app deployment updated')) {
+					return JSON.stringify({
+						branch,
+						deployed: true,
+						note: 'The space reset itself after deploying. The host rebuilds the preview from the committed tree.',
+					}, null, 2);
+				}
 				return JSON.stringify({
 					branch,
-					error: `Deploy failed: ${e instanceof Error ? e.message : String(e)}`,
+					error: `Deploy failed: ${message}`,
 				});
 			}
 		},

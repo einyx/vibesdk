@@ -13,7 +13,9 @@ import type { StructuredLogger } from '../../logger';
 import type {
 	BrowserCaptureClient,
 	BrowserConsoleCaptureResult,
+	BrowserScreenshotResult,
 	CapturePayload,
+	ScreenshotPayload,
 } from './types';
 
 const DEFAULT_SIDECAR_URL = 'http://127.0.0.1:9223';
@@ -126,5 +128,63 @@ export class SidecarCaptureClient implements BrowserCaptureClient {
 			requestFailures: [],
 			warning: `Dev browser sidecar unavailable: ${reason}. Start it with 'npm run dev:browser'.`,
 		};
+	}
+
+	async captureScreenshot(
+		payload: ScreenshotPayload,
+	): Promise<BrowserScreenshotResult> {
+		const base = this.env.DEV_BROWSER_SIDECAR_URL || DEFAULT_SIDECAR_URL;
+		const devOrigin =
+			this.env.DEV_BROWSER_PREVIEW_ORIGIN || DEFAULT_DEV_PREVIEW_ORIGIN;
+		const rewrittenUrl = rewriteToLocalHost(payload.url, devOrigin);
+		const localPayload: ScreenshotPayload = { ...payload, url: rewrittenUrl };
+
+		try {
+			const resp = await fetch(`${base}/capture-screenshot`, {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify(localPayload),
+				signal: AbortSignal.timeout(CAPTURE_TIMEOUT_MS),
+			});
+			if (!resp.ok) {
+				const text = await resp.text().catch(() => '');
+				return {
+					url: localPayload.url,
+					capturedAt: new Date().toISOString(),
+					image: new Uint8Array(),
+					warning: `Dev browser sidecar unavailable: capture returned ${resp.status}: ${text.slice(0, 200)}. Start it with 'npm run dev:browser'.`,
+				};
+			}
+			const json = (await resp.json()) as {
+				image?: string;
+				captured_at?: string;
+				warning?: string;
+			};
+			if (!json.image) {
+				return {
+					url: localPayload.url,
+					capturedAt: new Date().toISOString(),
+					image: new Uint8Array(),
+					warning: json.warning ?? 'The dev browser sidecar returned no image.',
+				};
+			}
+			const binary = atob(json.image);
+			const bytes = new Uint8Array(binary.length);
+			for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+			return {
+				url: localPayload.url,
+				capturedAt: json.captured_at ?? new Date().toISOString(),
+				image: bytes,
+			};
+		} catch (e) {
+			const msg = e instanceof Error ? e.message : String(e);
+			this.logger.warn('Dev browser sidecar screenshot errored', { base, error: msg });
+			return {
+				url: localPayload.url,
+				capturedAt: new Date().toISOString(),
+				image: new Uint8Array(),
+				warning: `Dev browser sidecar unavailable: ${msg}. Start it with 'npm run dev:browser'.`,
+			};
+		}
 	}
 }

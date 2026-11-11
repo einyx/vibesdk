@@ -22,6 +22,7 @@ import { createCommitTool } from './commit-tool';
 import { createSetTitleTool } from './set-title-tool';
 import { selectThinkContextMessages } from './context-selector';
 import { getUserConfigurableSettings } from '../../config';
+import { getSandboxService } from '../../services/sandbox/factory';
 import { RateLimitService } from '../../services/rate-limit/rateLimits';
 import { hasCloudflareConfigured } from '../../services/rate-limit/usageChecker';
 import type { RateLimitSettings } from '../../services/rate-limit/config';
@@ -344,8 +345,30 @@ export class ThinkAgent extends Think<Env> {
 			get_browser_console_logs: createBrowserConsoleLogsTool({
 				env: this.env,
 				defaultUrl: previewUrl,
+				resolveUrl:
+					this.env.SANDBOX_SERVICE_TYPE === 'runner'
+						? () => this.resolveRunnerPreviewUrl()
+						: undefined,
 			}),
 		} as unknown as ToolSet;
+	}
+
+	/**
+	 * The URL the runner currently serves this app's preview from.
+	 *
+	 * Asked of the runner at call time: the preview moves whenever the app
+	 * is republished, so a URL remembered from when the agent was configured
+	 * goes stale after the first deploy.
+	 */
+	private async resolveRunnerPreviewUrl(): Promise<string | undefined> {
+		try {
+			const instanceId = this.name.toLowerCase().replace(/[^a-z0-9-]/g, '-');
+			const service = getSandboxService(instanceId, this.name);
+			const details = await service.getInstanceDetails(instanceId);
+			return details?.instance?.previewURL;
+		} catch {
+			return undefined;
+		}
 	}
 
 	/**

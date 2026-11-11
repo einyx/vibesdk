@@ -547,10 +547,18 @@ export class SpaceDO extends DurableObject<Env> {
 
     if (!data.error) {
       await this.backend.push(branch)
-      setTimeout(() => {
-        const ctx = this.ctx as unknown as { abort: (reason?: string) => void }
-        ctx.abort("Generated app deployment updated")
-      }, 0)
+      // A successful deploy restarts the supervisor so an active Facet
+      // cannot keep serving the old code. The Facet only exists when the
+      // Worker Loader is bound — without it there is nothing to restart,
+      // and the abort would take down the deploy's own RPC response with
+      // it, turning a deploy that worked into "Deploy failed: Generated
+      // app deployment updated".
+      if (this.env.LOADER) {
+        setTimeout(() => {
+          const ctx = this.ctx as unknown as { abort: (reason?: string) => void }
+          ctx.abort("Generated app deployment updated")
+        }, 0)
+      }
     }
 
     return data

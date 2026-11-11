@@ -23,6 +23,31 @@ export interface CapturePayload {
 	interactScript?: string;
 }
 
+/**
+ * A screenshot request.
+ *
+ * Same shape of work as the console capture — navigate, settle, then read
+ * the page — but the result is an image rather than a list of events.
+ */
+export interface ScreenshotPayload {
+	url: string;
+	viewport: { width: number; height: number };
+	/** Seconds to wait after navigation finishes before the shot is taken. */
+	waitSeconds: number;
+}
+
+export interface BrowserScreenshotResult {
+	url: string;
+	capturedAt: string;
+	/** The PNG bytes. */
+	image: Uint8Array;
+	/**
+	 * Populated when the dev sidecar is unavailable, or the capture could
+	 * not be taken. The caller reports it rather than throwing.
+	 */
+	warning?: string;
+}
+
 export interface BrowserConsoleEntry {
 	level: string;
 	text: string;
@@ -93,9 +118,11 @@ export interface CapturePage {
 	setViewport(v: { width: number; height: number }): Promise<void>;
 	goto(url: string, opts?: { waitUntil?: string; timeout?: number }): Promise<unknown>;
 	evaluate(script: string): Promise<unknown>;
+	screenshot(opts?: { type?: string; fullPage?: boolean }): Promise<Uint8Array>;
 	close(): Promise<void>;
 }
 
 export interface BrowserCaptureClient {
 	captureConsoleLogs(payload: CapturePayload): Promise<BrowserConsoleCaptureResult>;
+	captureScreenshot(payload: ScreenshotPayload): Promise<BrowserScreenshotResult>;
 }

@@ -384,6 +384,20 @@ export class ThinkCodingBehavior
 	}
 
 	/**
+	 * The runner's id for this app.
+	 *
+	 * The runner addresses an instance by the session id the worker sends
+	 * with the request, so the app's own id is used as that session id. The
+	 * preview then lives at a stable address (`/p/<appId>/`) that the chat,
+	 * the app page and the headless browser can all name — whichever
+	 * session published it, and whether it is publishing for the first time
+	 * or replacing what was there before.
+	 */
+	private runnerInstanceId(): string {
+		return this.getAgentId().toLowerCase().replace(/[^a-z0-9-]/g, '-');
+	}
+
+	/**
 	 * Publish the app to the runner and return its preview URL.
 	 *
 	 * The app's source tree is read from the space and handed to the runner,
@@ -391,7 +405,7 @@ export class ThinkCodingBehavior
 	 * and serves it under the runner's host.
 	 */
 	private async deployToRunner(): Promise<PreviewType | null> {
-		const instanceId = this.getAgentId().toLowerCase().replace(/[^a-z0-9-]/g, '-');
+		const instanceId = this.runnerInstanceId();
 		try {
 			const files = await this.collectRunnerFiles();
 			if (files.length === 0) {
@@ -400,7 +414,7 @@ export class ThinkCodingBehavior
 			}
 
 			const service = getSandboxService(
-				this.state.sessionId ?? instanceId,
+				instanceId,
 				this.getAgentId(),
 			);
 			const created = await service.createInstance({
@@ -443,9 +457,15 @@ export class ThinkCodingBehavior
 				this.logger.debug('Could not retire the previous instances', error);
 			}
 
-			const url = created.previewURL ?? created.runId;
+			const url = created.previewURL ?? created.runId ?? instanceId;
 			this.broadcast(WebSocketMessageResponses.DEPLOYMENT_COMPLETED, {
 				previewURL: url,
+			});
+			// The picture on the app's card comes from the preview that is
+			// live right now, so it is taken here rather than in whatever
+			// browser happens to have the app open.
+			void this.refreshAppScreenshot(url, instanceId).catch((error) => {
+				this.logger.warn('Could not refresh the app screenshot', error);
 			});
 			return { previewURL: url };
 		} catch (error) {
@@ -455,6 +475,48 @@ export class ThinkCodingBehavior
 			});
 			return null;
 		}
+	}
+
+	/**
+	 * Wait until the runner is actually serving the preview.
+	 *
+	 * A publish returns as soon as the instance exists; its dev server needs
+	 * a moment more before it answers. A picture taken before then would be
+	 * of an error page.
+	 */
+	private async waitForPreviewReady(instanceId: string, timeoutMs = 90_000): Promise<boolean> {
+		const service = getSandboxService(instanceId, this.getAgentId());
+		const deadline = Date.now() + timeoutMs;
+		while (Date.now() < deadline) {
+			try {
+				const status = await service.getInstanceStatus(instanceId);
+				if (status?.isHealthy) return true;
+				if (status?.message === 'failed') return false;
+			} catch {
+				// The runner is still coming up; try again.
+			}
+			await new Promise((resolve) => setTimeout(resolve, 2000));
+		}
+		return false;
+	}
+
+	/**
+	 * Take a picture of the running preview and store it against the app.
+	 *
+	 * The community card shows this picture; without one it says "Preview
+	 * unavailable". Capturing it here — rather than in the browser that
+	 * opened the app — keeps the card right whether or not anyone is
+	 * looking at it.
+	 */
+	private async refreshAppScreenshot(previewUrl: string, instanceId: string): Promise<void> {
+		const ready = await this.waitForPreviewReady(instanceId);
+		if (!ready) {
+			this.logger.warn('The preview never came up; the screenshot was not refreshed', {
+				instanceId,
+			});
+			return;
+		}
+		await this.captureScreenshot(previewUrl, { width: 1280, height: 720 });
 	}
 
 	/**
@@ -528,7 +590,34 @@ export class ThinkCodingBehavior
 		return `https://${host}`;
 	}
 
+	/**
+	 * The URL the runner serves this app's preview from, if it is published.
+	 *
+	 * The runner owns the address (its host, its path prefix), so it is
+	 * asked rather than guessed.
+	 */
+	private async getRunnerPreviewURL(): Promise<string | undefined> {
+		try {
+			const instanceId = this.runnerInstanceId();
+			const service = getSandboxService(instanceId, this.getAgentId());
+			const details = await service.getInstanceDetails(instanceId);
+			return details?.instance?.previewURL;
+		} catch (error) {
+			this.logger.debug('The runner did not report a preview URL', error);
+			return undefined;
+		}
+	}
+
 	public async getBrowserPreviewURL(previewVersionOverride?: number): Promise<string> {
+		// A deployment that hosts previews on the runner serves them there.
+		// The space's own preview path loads the app into a Durable Object
+		// Facet through the Worker Loader — a paid-plan feature this
+		// deployment does not have — so that path answers 500 for every
+		// request, the app's own API included.
+		if (this.env.SANDBOX_SERVICE_TYPE === 'runner') {
+			const runnerUrl = await this.getRunnerPreviewURL();
+			if (runnerUrl) return runnerUrl;
+		}
 		const spaceName = this.getAgentId();
 		const branch = this.state.currentBranch || 'main';
 		const previewBaseUrl = `${await this.getPublicOrigin()}${buildSpacePreviewPath(spaceName, branch)}`;
@@ -926,6 +1015,15 @@ export class ThinkCodingBehavior
 		const commitHash = parsed && typeof parsed.commit_hash === 'string' ? parsed.commit_hash : undefined;
 		if (commitHash) {
 			this.setState({ ...this.state, lastDeployedCommit: commitHash });
+		}
+		// A deployment that hosts previews on the runner serves them there:
+		// the space's own preview path needs a paid runtime, so the space
+		// deploy only commits the tree. Publishing it to the runner is what
+		// makes the change visible — and it retires the previous instance
+		// of this app while doing so.
+		if (this.env.SANDBOX_SERVICE_TYPE === 'runner') {
+			await this.deployToRunner();
+			return;
 		}
 		try {
 			const url = await this.getBrowserPreviewURL();
