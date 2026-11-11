@@ -19,6 +19,7 @@
 		"./runtime/src/rpc.ts",
 		"./runtime/src/types.ts",
 		"./runner/protocol.ts",
+		"./publisher/protocol.ts",
 		"./builder/src",
 		"./builder/scripts",
 		"./packages/artifacts-viewer/packages/artifacts-viewer/src/index.ts",

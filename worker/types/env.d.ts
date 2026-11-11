@@ -33,6 +33,7 @@ declare namespace Cloudflare {
 		ZHIPU_API_KEY: string;
 		GLM_API_KEY: string;
 		PLATFORM_MODEL_PROVIDERS: string;
+		PUBLISH_SERVICE_API_KEY: string;
 		SANDBOX_SERVICE_API_KEY: string;
 		SANDBOX_SERVICE_TYPE: string;
 		SANDBOX_SERVICE_URL: string;

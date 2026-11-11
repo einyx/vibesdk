@@ -34,6 +34,7 @@
 - `src/` is the React app (`src/main.tsx`, routes in `src/routes.tsx`). API contracts live in `src/api-types.ts`; frontend HTTP calls belong in `src/lib/api-client.ts`.
 - `worker/index.ts` is the Worker entrypoint and Durable Object export surface. Hono middleware/routes are wired by `worker/app.ts` and `worker/api/routes/index.ts`.
 - `space/` is the only declared workspace package. It provides the `SpaceDO` workspace and file layer used by the think agent, with durable git history stored through Cloudflare Artifacts, and is bundled before the root app; edit implementation in `space/src`, never generated `space/dist`, and keep the hand-maintained `space/types/index.d.ts` aligned with public exports.
+- `runner/` is the Runner service: instances, command execution and the preview proxy, on node. `publisher/` is the Publisher service: it applies an app's Kubernetes stack and serves the deployed apps. Both are standalone node services with their own contracts (`runner/protocol.ts`, `publisher/protocol.ts`), their own tests in the node pool, and no npm dependencies.
 - `sdk/` is an independent Bun package with its own lockfile, scripts, and tests. It imports the platform WebSocket protocol from `worker/api/websocketTypes.ts`, so protocol changes must remain SDK-compatible.
 - Shared frontend/backend types belong in `shared/`; Worker-only types stay under `worker/`.
 - Architecture overview (ThinkAgent, SpaceDO, Artifacts, Dynamic Worker previews): `docs/llm.md`. Production deploy: `bun run deploy` (needs `.prod.vars`).

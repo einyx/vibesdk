@@ -28,6 +28,7 @@
 		"test:builder": "vitest run --config vitest.builder.config.ts",
 		"build:builder": "bun run --cwd builder build",
 		"test:runtime": "vitest run --config vitest.runtime.config.ts",
+		"test:publisher": "vitest run --config vitest.publisher.config.ts",
 		"test:integration": "VIBESDK_RUN_INTEGRATION_TESTS=1 vitest run sdk/test/integration/integration.test.ts",
 		"test:watch": "vitest",
 		"test:coverage": "vitest run --coverage",

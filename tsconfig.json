@@ -18,6 +18,9 @@
 		},
 		{
 			"path": "./tsconfig.runtime.json"
+		},
+		{
+			"path": "./tsconfig.publisher.json"
 		}
 	],
 	"compilerOptions": {

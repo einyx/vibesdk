@@ -211,6 +211,11 @@
         // on a wildcard route of the origin zone — a wildcard here would
         // shadow the auth origin.
         "CUSTOM_PREVIEW_DOMAIN": "",
+        // The publisher applies an app's stack to the k3s cluster: a
+        // Deployment, a Service and a volume per app, in the app
+        // namespace. Set, the deploy publishes there instead of to a
+        // Worker on workers.dev.
+        "PUBLISH_SERVICE_URL": "https://published.prysm.sh",
         // The builder on the host, when the platform runs in two places.
         // The Worker stays the front door; the switch decides whether the
         // work happens here or there.
