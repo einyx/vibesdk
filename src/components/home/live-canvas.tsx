@@ -7,6 +7,11 @@ import { cn } from '@cloudflare/kumo';
  * The home page used to be a prompt in the middle of a page. The product's
  * magic is the agent working — so the running build gets its own column, with
  * the plan, the file being written, and the live preview.
+ *
+ * Everything in here is a fact about the user's own app: the steps are
+ * derived from what has actually happened, the files are the files the agent
+ * wrote, and the picture is a render of the running preview. Nothing here is
+ * a placeholder — a panel that lies about a build is worse than no panel.
  */
 
 interface LiveStep {
@@ -21,19 +26,17 @@ interface LiveFile {
 
 interface LiveCanvasProps {
 	appTitle?: string;
+	/** When the app was last touched. */
+	updatedAt?: string | null;
 	steps?: LiveStep[];
 	files?: LiveFile[];
-	previewUrl?: string;
+	/** A render of the running preview. */
+	screenshotUrl?: string | null;
 	previewTitle?: string;
+	/** Where "Open app" goes. */
+	appHref?: string;
 	className?: string;
 }
-
-const defaultSteps: LiveStep[] = [
-	{ label: 'Scaffold & routing', state: 'done' },
-	{ label: 'App model', state: 'done' },
-	{ label: 'Feature implementation', state: 'run' },
-	{ label: 'Run & repair', state: 'todo' },
-];
 
 function StepIcon({ state }: { state: LiveStep['state'] }) {
 	if (state === 'done') {
@@ -76,12 +79,18 @@ function Wave() {
 
 export function LiveCanvas({
 	appTitle,
-	steps = defaultSteps,
+	updatedAt,
+	steps = [],
 	files = [],
-	previewUrl,
-	previewTitle = 'Today',
+	screenshotUrl,
+	previewTitle = 'Preview',
+	appHref,
 	className,
 }: LiveCanvasProps) {
+	// The pulse and the "live" claim only hold while a step is actually
+	// running. Otherwise this is the last build, and it says so.
+	const isRunning = steps.some((step) => step.state === 'run');
+
 	return (
 		<aside
 			className={cn(
@@ -90,47 +99,55 @@ export function LiveCanvas({
 			)}
 		>
 			<div className="flex items-center gap-2">
-				<span className="relative flex size-2">
-					<span className="absolute inline-flex size-full animate-ping rounded-full bg-kumo-success opacity-60" />
-					<span className="relative inline-flex size-2 rounded-full bg-kumo-success" />
+				{isRunning ? (
+					<span className="relative flex size-2">
+						<span className="absolute inline-flex size-full animate-ping rounded-full bg-kumo-success opacity-60" />
+						<span className="relative inline-flex size-2 rounded-full bg-kumo-success" />
+					</span>
+				) : (
+					<span className="size-2 rounded-full bg-kumo-line" />
+				)}
+				<span className="text-sm font-semibold">
+					{isRunning ? 'Live build' : 'Latest build'}
 				</span>
-				<span className="text-sm font-semibold">Live build</span>
 				<span className="flex-1" />
 				{appTitle ? (
-					<span className="text-xs text-kumo-subtle">{appTitle}</span>
+					<span className="max-w-[45%] truncate text-xs text-kumo-subtle">
+						{appTitle}
+					</span>
 				) : null}
 			</div>
 
-			<div className="rounded-lg border border-kumo-hairline bg-kumo-base p-4">
-				<ul className="flex flex-col">
-					{steps.map((step) => (
-						<li
-							key={step.label}
-							className="flex items-center gap-2.5 py-1.5 text-sm"
-						>
-							<StepIcon state={step.state} />
-							<span
-								className={cn(
-									step.state === 'todo'
-										? 'text-kumo-subtle'
-										: 'text-kumo-default',
-								)}
+			{steps.length > 0 ? (
+				<div className="rounded-lg border border-kumo-hairline bg-kumo-base p-4">
+					<ul className="flex flex-col">
+						{steps.map((step) => (
+							<li
+								key={step.label}
+								className="flex items-center gap-2.5 py-1.5 text-sm"
 							>
-								{step.label}
-							</span>
-							{step.state === 'run' ? (
-								<span className="flex-1" />
-							) : null}
-							{step.state === 'run' ? <Wave /> : null}
-						</li>
-					))}
-				</ul>
-			</div>
+								<StepIcon state={step.state} />
+								<span
+									className={cn(
+										step.state === 'todo'
+											? 'text-kumo-subtle'
+											: 'text-kumo-default',
+									)}
+								>
+									{step.label}
+								</span>
+								{step.state === 'run' ? <span className="flex-1" /> : null}
+								{step.state === 'run' ? <Wave /> : null}
+							</li>
+						))}
+					</ul>
+				</div>
+			) : null}
 
 			{files.length > 0 ? (
 				<div className="rounded-lg border border-kumo-hairline bg-kumo-base p-4">
 					<p className="mb-2 font-mono text-[10.5px] uppercase tracking-[0.1em] text-kumo-subtle">
-						writing
+						files
 					</p>
 					<ul className="flex flex-col gap-1.5">
 						{files.map((file) => (
@@ -158,46 +175,47 @@ export function LiveCanvas({
 			<div className="overflow-hidden rounded-lg border border-kumo-hairline bg-kumo-base">
 				<div className="flex items-center gap-2 border-b border-kumo-hairline px-3 py-2">
 					<span className="font-mono text-[11px] text-kumo-subtle">
-						{previewUrl ?? 'preview'}
+						preview
 					</span>
 				</div>
-				<div className="p-4">
-					<p className="mb-3 text-sm font-semibold">{previewTitle}</p>
-					<ul className="flex flex-col">
-						{['Renew domain', 'Ship the pricing page', 'Book flights'].map(
-							(item, index) => (
-								<li
-									key={item}
-									className="flex items-center gap-2.5 border-b border-kumo-hairline py-2 text-sm last:border-b-0"
-								>
-									<span
-										className={cn(
-											'size-4 shrink-0 rounded-[5px] border',
-											index === 0
-												? 'border-kumo-brand bg-kumo-brand'
-												: 'border-kumo-line',
-										)}
-									/>
-									<span
-										className={cn(
-											index === 0 && 'text-kumo-subtle line-through',
-										)}
-									>
-										{item}
-									</span>
-								</li>
-							),
-						)}
-					</ul>
+				{screenshotUrl ? (
+					<img
+						src={screenshotUrl}
+						alt={`${previewTitle} preview`}
+						className="aspect-[16/10] w-full bg-kumo-recessed object-cover"
+					/>
+				) : (
+					<p className="px-4 py-6 text-center text-sm text-kumo-subtle">
+						No preview captured yet.
+					</p>
+				)}
+				<div className="flex items-center justify-between gap-2 border-t border-kumo-hairline px-3 py-2">
+					<span className="min-w-0 truncate text-sm font-semibold">
+						{previewTitle}
+					</span>
+					{updatedAt ? (
+						<span className="shrink-0 text-xs text-kumo-subtle">
+							{updatedAt}
+						</span>
+					) : null}
 				</div>
 			</div>
 
-			<Link
-				to="/apps"
-				className="text-xs text-kumo-subtle transition-colors hover:text-kumo-default"
-			>
-				See all your apps →
-			</Link>
+			{appHref ? (
+				<Link
+					to={appHref}
+					className="text-xs text-kumo-subtle transition-colors hover:text-kumo-default"
+				>
+					Open app →
+				</Link>
+			) : (
+				<Link
+					to="/apps"
+					className="text-xs text-kumo-subtle transition-colors hover:text-kumo-default"
+				>
+					See all your apps →
+				</Link>
+			)}
 		</aside>
 	);
 }

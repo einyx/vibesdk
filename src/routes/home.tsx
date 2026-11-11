@@ -15,6 +15,7 @@ import {
 import { useFeature } from '@/features';
 import { useAuthGuard } from '../hooks/useAuthGuard';
 import { usePaginatedApps } from '@/hooks/use-paginated-apps';
+import { useApp } from '@/hooks/use-app';
 import { AnimatePresence, LayoutGroup, motion } from 'framer-motion';
 import { AppCard } from '@/components/shared/AppCard';
 import { LinkButton, cn } from '@cloudflare/kumo';
@@ -124,27 +125,33 @@ export default function Home() {
 		limit: 1,
 	});
 	const recentApp = myApps?.[0];
-	const liveAppTitle = recentApp?.title;
-	const livePreviewUrl = recentApp
-		? `https://${recentApp.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.app.prysm.sh`
-		: undefined;
+	const { app: recentAppDetail } = useApp(recentApp?.id);
+
+	// The files the agent actually wrote — the app's own summary, not a
+	// placeholder list.
+	const liveFiles = useMemo(() => {
+		const generated = recentAppDetail?.agentSummary?.generatedCode ?? [];
+		return generated.slice(0, 6).map((file) => ({ path: file.filePath }));
+	}, [recentAppDetail]);
+
+	// Each step is a fact about the app, not a script for how a build might
+	// go: the prompt was received, the code exists, the preview was captured.
 	const liveSteps = useMemo(() => {
 		if (!recentApp) {
 			return [];
 		}
 		return [
-			{ label: 'Scaffold & routing', state: 'done' as const },
-			{ label: 'App model', state: 'done' as const },
-			{ label: 'Feature implementation', state: 'run' as const },
-			{ label: 'Run & repair', state: 'todo' as const },
+			{ label: 'Prompt received', state: 'done' as const },
+			{
+				label: 'App written',
+				state: liveFiles.length > 0 ? ('done' as const) : ('todo' as const),
+			},
+			{
+				label: 'Preview captured',
+				state: recentApp.screenshotUrl ? ('done' as const) : ('todo' as const),
+			},
 		];
-	}, [recentApp]);
-	const liveFiles = useMemo(() => {
-		if (!recentApp) {
-			return [];
-		}
-		return [{ path: 'src/app.tsx', progress: 62 }];
-	}, [recentApp]);
+	}, [recentApp, liveFiles.length]);
 
 	// Discover section should appear only when enough apps are available and loading is done
 	const discoverReady = useMemo(
@@ -379,12 +386,21 @@ export default function Home() {
 			</div>
 
 			{/* The live canvas: what the agent is doing right now. */}
-			<LiveCanvas
-				appTitle={liveAppTitle}
-				steps={liveSteps}
-				files={liveFiles}
-				previewUrl={livePreviewUrl}
-			/>
+			{recentApp ? (
+				<LiveCanvas
+					appTitle={recentApp.title}
+					updatedAt={
+						'updatedAtFormatted' in recentApp
+							? recentApp.updatedAtFormatted
+							: undefined
+					}
+					steps={liveSteps}
+					files={liveFiles}
+					screenshotUrl={recentApp.screenshotUrl}
+					previewTitle={recentApp.title}
+					appHref={`/app/${recentApp.id}`}
+				/>
+			) : null}
 
 			{/* Usage limit dialogs */}
 			{showLimitDialog}

@@ -13,6 +13,7 @@ import type {
 	AppSortOption,
 } from '@/api-types';
 import { appEvents } from '@/lib/app-events';
+import { useAuth } from '@/contexts/auth-context';
 import {
 	queryKeys,
 	type PaginatedAppsListFilters,
@@ -170,6 +171,7 @@ export function usePaginatedApps(
 	options: UsePaginatedAppsOptions,
 ): UsePaginatedAppsResult {
 	const queryClient = useQueryClient();
+	const { user } = useAuth();
 	const limit = options.limit || 20;
 	const autoFetch = options.autoFetch !== false;
 
@@ -214,7 +216,7 @@ export function usePaginatedApps(
 
 	const queryKey =
 		options.type === 'user'
-			? queryKeys.apps.user(listFilters)
+			? queryKeys.apps.user(listFilters, user?.id)
 			: queryKeys.apps.public(listFilters);
 
 	const query = useInfiniteQuery({

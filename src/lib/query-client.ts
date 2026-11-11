@@ -44,9 +44,14 @@ export function createIDBPersister(
 // session query is still within its staleTime, would not refetch — leaving the
 // user looking signed out after a successful Cloudflare/OAuth login. It also
 // avoids leaking user-scoped data across account switches.
+//
+// The signed-in app list is user-scoped for the same reason: it is keyed by
+// account, so a list persisted for one account must never be restored for
+// another.
 const NON_PERSISTED_KEY_PREFIXES: readonly (readonly unknown[])[] = [
 	queryKeys.auth.all,
 	queryKeys.account.all,
+	queryKeys.apps.userAll(),
 ];
 
 function hasKeyPrefix(
@@ -61,8 +66,10 @@ export const queryPersistOptions = {
 	maxAge: PERSIST_MAX_AGE,
 	// Bump to discard previously persisted caches. `v2` drops blobs written
 	// before auth/account queries were excluded, which could otherwise restore
-	// a stale logged-out session once after an OAuth login.
-	buster: 'v2',
+	// a stale logged-out session once after an OAuth login. `v3` drops the
+	// signed-in app list, which was keyed without the account and could be
+	// restored for whoever signed in next.
+	buster: 'v3',
 	dehydrateOptions: {
 		shouldDehydrateQuery: (query: {
 			queryKey: readonly unknown[];

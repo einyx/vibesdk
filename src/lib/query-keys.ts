@@ -13,15 +13,19 @@ export const queryKeys = {
 		session: () => [...queryKeys.auth.all, 'session'] as const,
 		providers: () => [...queryKeys.auth.all, 'providers'] as const,
 	},
-	/** Unauthenticated / list-scoped app feeds (public + paginated user lists). */
+	/**
+	 * App feeds. The user's own list is account-scoped: its key carries the
+	 * user id, so one account's list is never served to another (and a list
+	 * fetched while signed out is never served to whoever signs in next).
+	 */
 	apps: {
 		all: ['apps'] as const,
 		publicAll: () => [...queryKeys.apps.all, 'public'] as const,
 		public: (filters: PaginatedAppsListFilters) =>
 			[...queryKeys.apps.publicAll(), filters] as const,
 		userAll: () => [...queryKeys.apps.all, 'user'] as const,
-		user: (filters: PaginatedAppsListFilters) =>
-			[...queryKeys.apps.userAll(), filters] as const,
+		user: (filters: PaginatedAppsListFilters, userId?: string | null) =>
+			[...queryKeys.apps.userAll(), filters, userId ?? 'anonymous'] as const,
 	},
 	account: {
 		all: ['account'] as const,

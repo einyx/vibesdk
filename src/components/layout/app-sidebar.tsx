@@ -19,6 +19,7 @@ import {
 	cn,
 	useSidebar,
 } from '@cloudflare/kumo';
+import { PrysmMark } from '@/components/brand/prysm-brand';
 import { useAuth } from '@/contexts/auth-context';
 import { useApps, useFavoriteApps, useRecentApps } from '@/hooks/use-apps';
 import { AppActionsDropdown } from '@/components/shared/AppActionsDropdown';
@@ -269,11 +270,8 @@ export function AppSidebar() {
 				)}
 			>
 				{isCollapsed ? (
-					<div className="relative flex size-9 items-center justify-center">
-						<CloudflareLogo
-							variant="glyph"
-							className="size-7 shrink-0 transition-opacity group-hover/sidebar:opacity-0 group-focus-within/sidebar:opacity-0"
-						/>
+					<div className="relative flex size-9 items-center justify-center text-kumo-brand">
+						<PrysmMark className="size-7 shrink-0 transition-opacity group-hover/sidebar:opacity-0 group-focus-within/sidebar:opacity-0" />
 						<Sidebar.Trigger
 							aria-label="Open sidebar"
 							className="absolute inset-0 flex size-9 items-center justify-center opacity-0 transition-opacity group-hover/sidebar:opacity-100 group-focus-within/sidebar:opacity-100"
@@ -285,10 +283,7 @@ export function AppSidebar() {
 							to="/"
 							className="flex min-w-0 flex-1 items-center gap-2.5 text-kumo-strong"
 						>
-							<CloudflareLogo
-								variant="glyph"
-								className="size-7 shrink-0"
-							/>
+							<PrysmMark className="size-7 shrink-0 text-kumo-brand" />
 							<span className="min-w-0 flex-1 truncate text-base font-black font-funky-mono uppercase tracking-wide">
 								Build
 							</span>
