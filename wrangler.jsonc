@@ -82,7 +82,7 @@
 		"binding": "BROWSER",
 		"remote": true
 	},
-    // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // "dispatch_namespaces": [
+    // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // "dispatch_namespaces": [
  //     {
  //         "binding": "DISPATCHER",
  //         "namespace": "orange-build-default-namespace",
@@ -214,7 +214,7 @@
         // The builder on the host, when the platform runs in two places.
         // The Worker stays the front door; the switch decides whether the
         // work happens here or there.
-        "BUILDER_SERVICE_URL": "",
+        "BUILDER_SERVICE_URL": "https://builder.prysm.sh",
         "ARTIFACTS_NAMESPACE": "vibesdk-production",
         "PLATFORM_CAPABILITIES": {
             "features": {

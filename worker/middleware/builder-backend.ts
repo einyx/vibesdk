@@ -40,7 +40,16 @@ async function forward(request: Request, env: Env): Promise<Response> {
 	const target = new URL(`${url.pathname}${url.search}`, base);
 
 	try {
-		return await fetch(target.toString(), request);
+		const response = await fetch(target.toString(), request);
+		// Which backend answered is worth being able to see.
+		if (response.status === 101) return response;
+		const headers = new Headers(response.headers);
+		headers.set('x-builder-backend', 'host');
+		return new Response(response.body, {
+			status: response.status,
+			statusText: response.statusText,
+			headers,
+		});
 	} catch (error) {
 		console.error('[builder-backend] the host builder could not be reached', error);
 		return new Response(
