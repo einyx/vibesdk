@@ -32,6 +32,8 @@ VibeSDK is an agentic full-stack application builder on Cloudflare.
 - `/sdk` - TypeScript client SDK
 - `/migrations` - D1 migrations
 - `/scripts` - Setup and deployment utilities
+- `/runner` - The Runner service: previews, instances and command execution, on node
+- `/publisher` - The Publisher service: a deploy is a Kubernetes stack in the cluster
 
 ## Key Architectural Patterns
 
