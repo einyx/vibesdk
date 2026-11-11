@@ -41,6 +41,13 @@ if printf '%s\n' "$STAGED_FILES" | grep -Eq "^runner/"; then
   bunx vitest run --config vitest.runner.config.ts || exit 1
 fi
 
+# 1c) The publisher's own tests. They need the node pool too: the
+# publisher reads the environment and talks to the Kubernetes API.
+if printf '%s\n' "$STAGED_FILES" | grep -Eq "^publisher/"; then
+  echo "[pre-commit] Running the publisher's tests"
+  bunx vitest run --config vitest.publisher.config.ts || exit 1
+fi
+
 # 2) Tests
 # Use Vitest 'related' to run only affected tests for staged files.
 # Exclude heavy directories that are not relevant at commit time.

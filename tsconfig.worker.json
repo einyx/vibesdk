@@ -12,6 +12,7 @@
 		"./worker",
 		"./worker/types",
 		"./runner/protocol.ts",
+		"./publisher/protocol.ts",
 		"./test/worker-entry.ts",
 		"./packages/artifacts-viewer/packages/artifacts-viewer/src/index.ts",
 		"./packages/artifacts-viewer/packages/artifacts-viewer/src/server",
