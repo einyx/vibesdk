@@ -1,0 +1,5 @@
+# The image carries the service and nothing else: the tests, the docs and
+# the protocol (which the service imports as types only) are not in it.
+test
+README.md
+protocol.ts

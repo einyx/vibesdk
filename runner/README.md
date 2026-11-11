@@ -68,6 +68,22 @@ host, so one hostname and one certificate cover every instance. The
 host-based form (`<id>.<PREVIEW_DOMAIN>`) works too, when a wildcard
 certificate and DNS are available.
 
+## The image
+
+`Dockerfile` builds the service into an image that also carries everything
+a generated app needs — bun, and wrangler for the Workers apps:
+
+```sh
+docker build -t vibesdk-sandbox-agent:latest runner/
+```
+
+The build context is `runner/`, so nothing else in the repository is sent
+to the daemon.
+
+On Kubernetes, the pod wants the environment above and a volume for
+`DATA_DIR`. A ready-made manifest — namespace, PVC, Deployment, Service —
+is in the compose repository, at `stacks/vibesdk-sandbox/k8s/`.
+
 ## Development
 
 ```
