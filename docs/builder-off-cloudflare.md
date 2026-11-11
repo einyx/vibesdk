@@ -181,20 +181,30 @@ data is moved across.
   cluster, so the Worker is no longer the deploy target either.
 - **Browser Rendering**: the sidecar replaces the binding, exactly.
 
-## The switch
+## The shape
 
-The platform runs in two places at once: the Worker, and the builder on the
-host. They share the same source — the same routes, the same contracts, the
-same agent code — and they differ only in where the platform's pieces come
-from.
-
-The Worker stays the front door: it owns the hostname, the certificates and
-the edge. What the switch decides is where the *work* happens.
+The builder is a service on the cluster, not a program on a host. The
+Worker stays the front door — it owns the hostname, the certificates and
+the edge — and a switch says where the work happens.
 
 ```
 browser ── apps.prysm.sh ── edge ── Worker ──┬─ (off) the Worker answers
-                                               └─ (on)  the host builder answers
+                                               └─ (on)  the pod answers
 ```
+
+Inside the cluster there are two kinds of pod:
+
+- **The control plane** — the API, the catalogue, the sign-in. One
+  deployment, a shared database, no app's volume.
+- **A session's pod** — the agent for one app, with that app's volume
+  mounted. A pod can only mount the volumes it declares, and a volume per
+  app means the session that owns the app has a pod of its own.
+
+The front door has to know which pod an app's session runs in, so a router
+in the cluster resolves the app id to the pod's address and forwards; the
+Worker sends the session's routes to it.
+
+## The switch
 
 The switch is `runtime_switches` in the key-value store:
 
