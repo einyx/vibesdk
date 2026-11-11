@@ -61,27 +61,23 @@ export class SessionRuntime {
 
 	/** The namespace a session class is reached through. */
 	namespace(constructor: SessionConstructor): SessionNamespace {
-		const runtime = this;
 		const className = constructor.name;
 
-		const namespace: SessionNamespace = {
+		return {
 			idFromName: (name: string) => ({ name }),
 			idFromString: (id: string) => ({ name: id }),
-			get: (id: { name: string }) => runtime.stub(className, id.name),
-			getByName: (name: string) => runtime.stub(className, name),
+			get: (id: { name: string }) => this.stub(className, id.name),
+			getByName: (name: string) => this.stub(className, name),
 		};
-		return namespace;
 	}
 
 	/** A stub: a reference to a session, by name. */
 	private stub(className: string, name: string): SessionStub {
-		const runtime = this;
-		const target = () => runtime.session(className, name);
 		return new Proxy({ name } as SessionStub, {
-			get(_target, property: string) {
+			get: (_target: SessionStub, property: string) => {
 				if (property === 'name') return name;
 				if (typeof property !== 'string') return undefined;
-				const instance = target() as unknown as Record<string, unknown>;
+				const instance = this.session(className, name) as unknown as Record<string, unknown>;
 				const value = instance[property];
 				// A method is called on the session; anything else — a
 				// getter, a field — is the session's own.
@@ -99,8 +95,7 @@ export class SessionRuntime {
 
 		const database = this.database(className, name);
 		const storage = new SqliteStorage(database);
-		let context: NodeContext;
-		context = new NodeContext(name, storage, (reason) => {
+		const context = new NodeContext(name, storage, (reason) => {
 			this.sessions.delete(key);
 			this.sockets.clear();
 			void reason;

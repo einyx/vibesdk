@@ -129,7 +129,10 @@ becomes the real path rather than the exception.
 `Workspace` over DO SQLite, with Artifacts as the git remote. Off-platform:
 a real directory per app on a volume, real git, and Forgejo as the remote
 (Forgejo already runs on the prysm host). The `SpaceFsBackend` interface is
-the seam — a third backend drops in beside the two that exist.
+the seam — a third backend drops in beside the two that exist. The
+filesystem and the workspace are written (`runtime/src/workspace/`): the
+seventeen methods of `FileSystem` over Node's own, and the git that
+`@cloudflare/shell` already speaks, which is isomorphic-git and portable.
 
 **Phase 3 — the session runtime.** The platform is written (`runtime/`) and
 the SDK runs on it. What is left is the surroundings: the HTTP layer that
@@ -180,9 +183,13 @@ data is moved across.
 
 ## Open decisions
 
-1. **Where does an app's workspace live** — a volume per app, or one shared
-   volume with a directory per app? The first is simpler to reason about and
-   to back up; the second wastes less space on an idle app.
+1. **Where does an app's workspace live** — **a volume per app.** Decided.
+   Each app gets its own volume, mounted by the session that owns it, so
+   the workspace is local to the session that writes it, and an app's files
+   and history are backed up, moved and deleted as one thing. The cost is
+   that a builder process cannot hold every app's volume at once, which
+   settles decision 4 below: a session runs in a pod of its own, mounting
+   that app's volume.
 2. **The git remote** — Forgejo (it runs, it is a real forge, the API differs
    from Artifacts) or bare git repositories on a volume (no API to speak of,
    nothing to run).
@@ -191,4 +198,5 @@ data is moved across.
    session for the agent state (which is what the SDK already writes).
 4. **How the HTTP layer is shaped** — one process that holds every session
    (simple, one port, a session per app in memory) or one process per
-   session (isolated, elastic, but the routing has to find them).
+   session (isolated, elastic, and the only shape a volume per app
+   allows).

@@ -81,3 +81,22 @@ Both are in the runner and the publisher for the same reason.
   connection manager is the wrong shape for it.
 - **The HTTP layer.** The runtime holds sessions; something has to route a
   request to the session that owns the name, and hand it the socket.
+
+## The workspace
+
+An app's files and its history, on a volume:
+
+```ts
+const workspace = new VolumeWorkspace({ root: '/data/workspaces', appId: 'my-app' });
+await workspace.ready();
+await workspace.fs.writeFile('/src/main.ts', 'export const x = 1\n');
+await workspace.commit('first', { name: 'Prysm', email: 'dev@prysm.sh' });
+```
+
+`NodeFileSystem` is the seventeen methods of `@cloudflare/shell`'s
+`FileSystem`, over Node's own — so the git, the workspace and the state
+backend, which are all written against that interface, move to a volume
+without changing. The git is isomorphic-git, which is what
+`@cloudflare/shell` already uses.
+
+One app, one volume: the session that owns the app mounts it.
